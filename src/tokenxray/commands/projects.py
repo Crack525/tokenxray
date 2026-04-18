@@ -4,32 +4,26 @@ from collections import defaultdict
 
 from tokenxray.colors import C
 from tokenxray.display import fmt_cost, bar
-from tokenxray.parser import find_session_files, parse_session, calc_cost
+from tokenxray.parser import load_all_sessions
 
 
 def run(args):
-    files = find_session_files(args.path)
+    all_sessions = load_all_sessions(args.path, source_filter=getattr(args, "source", None))
     projects = defaultdict(lambda: {
         "sessions": 0, "turns": 0, "cost": 0, "cache_create_cost": 0,
         "output_cost": 0, "cache_read_cost": 0, "input_cost": 0,
     })
 
-    for f in files:
-        try:
-            s = parse_session(f)
-            if not s["turns"]:
-                continue
-            cost = calc_cost(s)
-            proj = s["project"]
-            projects[proj]["sessions"] += 1
-            projects[proj]["turns"] += len(s["turns"])
-            projects[proj]["cost"] += cost["total"]
-            projects[proj]["cache_create_cost"] += cost["cache_create"]
-            projects[proj]["cache_read_cost"] += cost["cache_read"]
-            projects[proj]["output_cost"] += cost["output"]
-            projects[proj]["input_cost"] += cost["input"]
-        except Exception:
-            continue
+    for s in all_sessions:
+        cost = s["cost"]
+        proj = s["project"]
+        projects[proj]["sessions"] += 1
+        projects[proj]["turns"] += len(s["turns"])
+        projects[proj]["cost"] += cost["total"]
+        projects[proj]["cache_create_cost"] += cost["cache_create"]
+        projects[proj]["cache_read_cost"] += cost["cache_read"]
+        projects[proj]["output_cost"] += cost["output"]
+        projects[proj]["input_cost"] += cost["input"]
 
     if not projects:
         print(f"{C.RED}No session data found.{C.RESET}")

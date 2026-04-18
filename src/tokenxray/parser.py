@@ -1,4 +1,4 @@
-"""JSONL session parsing and cost calculation."""
+"""Session parsing and cost calculation for Claude Code and Gemini CLI."""
 
 import json
 import glob
@@ -6,15 +6,22 @@ from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 
-from tokenxray.config import PROJECTS_DIR, get_pricing
+from tokenxray.config import CLAUDE_PROJECTS_DIR, GEMINI_SESSIONS_DIR, get_pricing
 
 
 def find_session_files(base_path=None):
     """Find all Claude Code JSONL conversation logs."""
-    path = Path(base_path) if base_path else PROJECTS_DIR
+    path = Path(base_path) if base_path else CLAUDE_PROJECTS_DIR
     if not path.exists():
         return []
     return sorted(glob.glob(str(path / "**/*.jsonl"), recursive=True))
+
+
+def find_gemini_session_files():
+    """Find all Gemini CLI session JSON files."""
+    if not GEMINI_SESSIONS_DIR.exists():
+        return []
+    return sorted(glob.glob(str(GEMINI_SESSIONS_DIR / "*/chats/session-*.json")))
 
 
 def parse_session(filepath):
@@ -159,15 +166,132 @@ def calc_cost(session):
     }
 
 
-def load_all_sessions(base_path=None):
+def parse_gemini_session(filepath):
+    """Parse a single Gemini CLI session JSON file into structured data."""
+    with open(filepath) as f:
+        data = json.load(f)
+
+    session_id = data.get("sessionId", Path(filepath).stem)
+    project_hash = data.get("projectHash", "unknown")
+
+    session = {
+        "file": filepath,
+        "id": session_id[:12],
+        "full_id": session_id,
+        "project": f"gemini/{project_hash[:8]}",
+        "source": "gemini",
+        "turns": [],
+        "user_messages": [],
+        "tool_calls": defaultdict(int),
+        "tool_results_chars": 0,
+        "assistant_output_chars": 0,
+        "models_used": set(),
+        "start_time": None,
+        "end_time": None,
+        "total_input": 0,
+        "total_output": 0,
+        "total_cache_read": 0,
+        "total_cache_create": 0,
+    }
+
+    # Parse timestamps
+    for ts_field in ("startTime", "lastUpdated"):
+        ts = data.get(ts_field)
+        if ts:
+            try:
+                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                if ts_field == "startTime":
+                    session["start_time"] = dt
+                else:
+                    session["end_time"] = dt
+            except (ValueError, AttributeError):
+                pass
+
+    for msg in data.get("messages", []):
+        if msg.get("type") == "user":
+            content = msg.get("content", "")
+            if isinstance(content, str) and 10 < len(content) < 5000:
+                session["user_messages"].append(len(content))
+            continue
+
+        if msg.get("type") != "gemini":
+            continue
+
+        tokens = msg.get("tokens")
+        if not tokens:
+            continue
+
+        model = msg.get("model", "unknown")
+        session["models_used"].add(model)
+
+        # Gemini token structure:
+        # input = total input (includes cached portion)
+        # cached = portion of input served from cache
+        # output = output tokens
+        # thoughts = thinking tokens (billed at output rate)
+        # tool = tool-use tokens
+        inp_total = tokens.get("input", 0)
+        cached = tokens.get("cached", 0)
+        output = tokens.get("output", 0)
+        thoughts = tokens.get("thoughts", 0)
+        fresh_input = inp_total - cached
+
+        # Map to our structure:
+        # fresh input → total_input
+        # cached → total_cache_read (cheaper rate)
+        # No cache_create concept in Gemini
+        # thoughts billed at output rate → add to output
+        session["total_input"] += fresh_input
+        session["total_cache_read"] += cached
+        session["total_output"] += output + thoughts
+
+        session["turns"].append({
+            "num": len(session["turns"]) + 1,
+            "input": fresh_input,
+            "output": output + thoughts,
+            "cache_read": cached,
+            "cache_create": 0,
+            "total_sent": inp_total,
+            "model": model,
+        })
+
+        # Count tool calls
+        for tc in msg.get("toolCalls", []):
+            session["tool_calls"][tc.get("name", "unknown")] += 1
+
+        content = msg.get("content", "")
+        if isinstance(content, str):
+            session["assistant_output_chars"] += len(content)
+
+    session["models_used"] = list(session["models_used"])
+    return session
+
+
+def load_all_sessions(base_path=None, include_gemini=True, source_filter=None):
     """Parse all sessions and return those with usage data."""
     sessions = []
-    for f in find_session_files(base_path):
-        try:
-            s = parse_session(f)
-            if s["turns"]:
-                s["cost"] = calc_cost(s)
-                sessions.append(s)
-        except Exception:
-            continue
+
+    # Claude Code sessions
+    if source_filter in (None, "all", "claude"):
+        for f in find_session_files(base_path):
+            try:
+                s = parse_session(f)
+                if s["turns"]:
+                    s.setdefault("source", "claude")
+                    s["cost"] = calc_cost(s)
+                    sessions.append(s)
+            except Exception:
+                continue
+
+    # Gemini CLI sessions
+    if source_filter in (None, "all", "gemini") and base_path is None:
+        for f in find_gemini_session_files():
+            try:
+                s = parse_gemini_session(f)
+                if s["turns"]:
+                    s["cost"] = calc_cost(s)
+                    sessions.append(s)
+            except Exception:
+                continue
+
     return sessions

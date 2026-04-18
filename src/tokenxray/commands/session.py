@@ -4,30 +4,24 @@ from pathlib import Path
 
 from tokenxray.colors import C
 from tokenxray.display import fmt_cost, fmt_tokens, bar, duration_str
-from tokenxray.parser import find_session_files, parse_session, calc_cost
+from tokenxray.parser import load_all_sessions
 
 
 def run(args):
     session_id = args.session
-    files = find_session_files(args.path)
+    sessions = load_all_sessions(args.path, source_filter=getattr(args, "source", None))
 
-    target = None
-    for f in files:
-        stem = Path(f).stem
-        if stem.startswith(session_id) or session_id in stem:
-            target = f
+    s = None
+    for sess in sessions:
+        if sess["full_id"].startswith(session_id) or session_id in sess["full_id"]:
+            s = sess
             break
 
-    if not target:
+    if not s:
         print(f"{C.RED}Session '{session_id}' not found.{C.RESET}")
         return
 
-    s = parse_session(target)
-    if not s["turns"]:
-        print(f"{C.RED}No usage data in session.{C.RESET}")
-        return
-
-    cost = calc_cost(s)
+    cost = s["cost"]
     total_sent = s["total_input"] + s["total_cache_read"] + s["total_cache_create"]
     user_q_tokens = sum(s["user_messages"]) // 4
     tool_result_tokens = s["tool_results_chars"] // 4

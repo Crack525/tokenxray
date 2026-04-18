@@ -4,16 +4,21 @@ from pathlib import Path
 
 # ─── Paths ─────────────────────────────────────────────────────────────────────
 
-PROJECTS_DIR = Path.home() / ".claude" / "projects"
+CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects"
+GEMINI_SESSIONS_DIR = Path.home() / ".gemini" / "tmp"
 SETTINGS_FILE = Path.home() / ".claude" / "settings.json"
 DATA_DIR = Path.home() / ".tokenxray"
 BASELINE_FILE = DATA_DIR / "baseline.json"
 HOOK_SCRIPT = DATA_DIR / "cost_hook.py"
 LIVE_SESSION_FILE = DATA_DIR / "live_session.json"
 
+# Backward compat alias
+PROJECTS_DIR = CLAUDE_PROJECTS_DIR
+
 # ─── Pricing (per million tokens) ──────────────────────────────────────────────
 
 PRICING = {
+    # Claude models
     "claude-opus-4-6": {
         "input": 15.0, "output": 75.0,
         "cache_read": 1.50, "cache_create": 18.75,
@@ -33,6 +38,17 @@ PRICING = {
         "input": 0.80, "output": 4.0,
         "cache_read": 0.08, "cache_create": 1.0,
         "label": "Haiku 4.5",
+    },
+    # Gemini models (<=200K context tier)
+    "gemini-2.5-pro": {
+        "input": 1.25, "output": 10.0,
+        "cache_read": 0.3125, "cache_create": 1.25,
+        "label": "Gemini 2.5 Pro",
+    },
+    "gemini-2.5-flash": {
+        "input": 0.15, "output": 0.60,
+        "cache_read": 0.0375, "cache_create": 0.15,
+        "label": "Gemini 2.5 Flash",
     },
 }
 

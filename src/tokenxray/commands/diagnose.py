@@ -8,7 +8,7 @@ from tokenxray.parser import load_all_sessions
 
 
 def run(args):
-    sessions = load_all_sessions(args.path)
+    sessions = load_all_sessions(args.path, source_filter=getattr(args, "source", None))
     if not sessions:
         print(f"{C.RED}No sessions found.{C.RESET}")
         return

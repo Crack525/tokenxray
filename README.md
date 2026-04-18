@@ -178,16 +178,27 @@ tokenxray --compare
   Avg cost/session    $12.48       $12.46    -$0.02   <-- improving!
 ```
 
-## How It Works
+## Supported Tools
 
-TokenXRay reads Claude Code's conversation logs (`~/.claude/projects/**/*.jsonl`). These JSONL files contain every API call with full token usage data:
+### Claude Code
+Reads JSONL conversation logs from `~/.claude/projects/**/*.jsonl`. Full token breakdown: input, output, cache read (90% discount), cache creation (25% premium).
 
-- `input_tokens` — fresh (uncached) input
-- `cache_read_input_tokens` — reused from cache (90% discount)
-- `cache_creation_input_tokens` — new cache entries (25% premium)
-- `output_tokens` — model's response
+### Gemini CLI
+Reads session JSON from `~/.gemini/tmp/*/chats/session-*.json`. Token breakdown: input, output, cached, thinking tokens. No cache creation premium.
 
-TokenXRay parses these, applies model-specific pricing (Opus, Sonnet, Haiku), and gives you the full picture.
+```bash
+# View only Claude sessions
+tokenxray --source claude
+
+# View only Gemini sessions
+tokenxray --source gemini
+
+# View everything (default)
+tokenxray --source all
+```
+
+### GitHub Copilot
+Not yet supported — Copilot doesn't store token usage data locally.
 
 **Your data stays local.** TokenXRay reads files on your machine and writes to `~/.tokenxray/`. Nothing is sent anywhere.
 
@@ -199,6 +210,8 @@ TokenXRay parses these, applies model-specific pricing (Opus, Sonnet, Haiku), an
 | Claude Sonnet 4.6 | $3/MTok | $15/MTok | $0.30/MTok | $3.75/MTok |
 | Claude Sonnet 4.5 | $3/MTok | $15/MTok | $0.30/MTok | $3.75/MTok |
 | Claude Haiku 4.5 | $0.80/MTok | $4/MTok | $0.08/MTok | $1.00/MTok |
+| Gemini 2.5 Pro | $1.25/MTok | $10/MTok | $0.31/MTok | — |
+| Gemini 2.5 Flash | $0.15/MTok | $0.60/MTok | $0.04/MTok | — |
 
 ## Key Insights From Our Research
 
@@ -230,7 +243,7 @@ TokenXRay currently gives you **visibility** — it shows where tokens go. Phase
 ## Requirements
 
 - Python 3.9+
-- Claude Code (or any tool that writes JSONL logs to `~/.claude/projects/`)
+- Claude Code and/or Gemini CLI (reads their local session logs)
 - No external dependencies
 
 ## License

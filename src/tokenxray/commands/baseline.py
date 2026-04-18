@@ -10,7 +10,7 @@ from tokenxray.parser import load_all_sessions
 
 
 def run_save(args):
-    sessions = load_all_sessions(args.path)
+    sessions = load_all_sessions(args.path, source_filter=getattr(args, "source", None))
     if not sessions:
         print(f"{C.RED}No sessions found.{C.RESET}")
         return
@@ -56,7 +56,7 @@ def run_compare(args):
     with open(BASELINE_FILE) as f:
         bl = json.load(f)
 
-    sessions = load_all_sessions(args.path)
+    sessions = load_all_sessions(args.path, source_filter=getattr(args, "source", None))
     cur_cost = sum(s["cost"]["total"] for s in sessions)
     cur_sessions = len(sessions)
     cur_turns = sum(len(s["turns"]) for s in sessions)
