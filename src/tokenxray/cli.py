@@ -20,6 +20,8 @@ def main():
     parser.add_argument("--export", "-e", choices=["csv"], help="Export data as CSV")
     parser.add_argument("--install-hook", action="store_true",
                         help="Install live cost tracking hook (Claude Code only)")
+    parser.add_argument("--install-advisor", action="store_true",
+                        help="Install smart model advisor (auto Opus/Sonnet switching)")
     parser.add_argument("--confirm", action="store_true", help="Auto-confirm hook installation")
     parser.add_argument("--source", choices=["claude", "gemini", "copilot", "all"], default="all",
                         help="Filter by tool (default: all)")
@@ -50,6 +52,9 @@ def main():
         run(args)
     elif args.install_hook:
         from tokenxray.commands.hook import run
+        run(args)
+    elif args.install_advisor:
+        from tokenxray.commands.advisor import run
         run(args)
     else:
         from tokenxray.commands.overview import run
