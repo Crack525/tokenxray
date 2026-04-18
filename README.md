@@ -247,7 +247,7 @@ TokenXRay currently gives you **visibility** — it shows where tokens go. Phase
 ## Requirements
 
 - Python 3.9+
-- Claude Code and/or Gemini CLI (reads their local session logs)
+- Claude Code, Gemini CLI, and/or GitHub Copilot (reads their local session logs)
 - No external dependencies
 
 ## License

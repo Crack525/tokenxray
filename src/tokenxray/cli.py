@@ -18,7 +18,8 @@ def main():
     parser.add_argument("--baseline", "-b", action="store_true", help="Save current stats as baseline")
     parser.add_argument("--compare", "-c", action="store_true", help="Compare against saved baseline")
     parser.add_argument("--export", "-e", choices=["csv"], help="Export data as CSV")
-    parser.add_argument("--install-hook", action="store_true", help="Install live cost tracking hook")
+    parser.add_argument("--install-hook", action="store_true",
+                        help="Install live cost tracking hook (Claude Code only)")
     parser.add_argument("--confirm", action="store_true", help="Auto-confirm hook installation")
     parser.add_argument("--source", choices=["claude", "gemini", "copilot", "all"], default="all",
                         help="Filter by tool (default: all)")

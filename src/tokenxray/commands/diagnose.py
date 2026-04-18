@@ -81,7 +81,7 @@ def _check_token_bombs(sessions, recs):
             "severity": "high",
             "title": f"{total_bombs} token bombs across {len(bomb_sessions)} sessions",
             "detail": "Responses over 3K tokens. Direct cost plus context inflation.",
-            "action": "Use caveman or similar to reduce output verbosity.",
+            "action": "Ask for concise responses. Each verbose output inflates all future turns.",
             "potential_savings": total_cost * 0.50,
         })
 
@@ -96,7 +96,7 @@ def _check_output_cost(sessions, total_cost, recs):
             "severity": "medium",
             "title": f"Output tokens: {fmt_cost(output_cost)} ({output_cost / total_cost * 100:.0f}%)",
             "detail": f"Average {avg:.0f} output tokens/turn. Total: {fmt_tokens(output_tokens)}.",
-            "action": "Request concise responses. On Opus, output is $75/MTok.",
+            "action": "Request concise responses. Verbose output compounds as context.",
             "potential_savings": output_cost * 0.40,
         })
 
