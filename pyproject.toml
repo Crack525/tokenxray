@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tokenxray"
+version = "0.1.0"
+description = "See where your AI coding tokens actually go. Analyze Claude Code session costs, find token bombs, and track spending."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    { name = "Md Niajul Hasan" },
+]
+keywords = ["claude", "tokens", "cost", "llm", "ai", "claude-code", "developer-tools"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/niajulhasan/tokenxray"
+Repository = "https://github.com/niajulhasan/tokenxray"
+Issues = "https://github.com/niajulhasan/tokenxray/issues"
+
+[project.scripts]
+tokenxray = "tokenxray.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
