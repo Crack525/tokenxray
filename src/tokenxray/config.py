@@ -1,12 +1,21 @@
 """Pricing models, paths, and constants."""
 
+import platform
 from pathlib import Path
 
 # ─── Paths ─────────────────────────────────────────────────────────────────────
 
 CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects"
 GEMINI_SESSIONS_DIR = Path.home() / ".gemini" / "tmp"
-COPILOT_WORKSPACE_DIR = Path.home() / "Library" / "Application Support" / "Code" / "User" / "workspaceStorage"
+
+# VS Code stores Copilot data in platform-specific locations
+_system = platform.system()
+if _system == "Darwin":
+    COPILOT_WORKSPACE_DIR = Path.home() / "Library" / "Application Support" / "Code" / "User" / "workspaceStorage"
+elif _system == "Windows":
+    COPILOT_WORKSPACE_DIR = Path.home() / "AppData" / "Roaming" / "Code" / "User" / "workspaceStorage"
+else:  # Linux
+    COPILOT_WORKSPACE_DIR = Path.home() / ".config" / "Code" / "User" / "workspaceStorage"
 SETTINGS_FILE = Path.home() / ".claude" / "settings.json"
 DATA_DIR = Path.home() / ".tokenxray"
 BASELINE_FILE = DATA_DIR / "baseline.json"

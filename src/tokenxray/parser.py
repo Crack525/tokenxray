@@ -138,9 +138,18 @@ def _parse_user_entry(entry, session):
                     session["user_messages"].append(len(text))
 
 
+def _pick_model(models_used):
+    """Pick the best model for pricing, skipping <synthetic>."""
+    real = [m for m in models_used if m != "<synthetic>"]
+    if real:
+        return real[0]
+    # Pure synthetic (subagent) — assume Opus since that's the parent model
+    return "claude-opus-4-6"
+
+
 def calc_cost(session):
     """Calculate session cost using model-specific pricing."""
-    model = session["models_used"][0] if session["models_used"] else "unknown"
+    model = _pick_model(session["models_used"])
     pricing = get_pricing(model)
 
     input_cost = (session["total_input"] / 1e6) * pricing["input"]

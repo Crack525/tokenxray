@@ -10,3 +10,5 @@ build/
 venv/
 .env
 .tokenxray/
+tokenxray.egg-info/
+uv.lock

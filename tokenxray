@@ -1,2 +1,0 @@
-#!/bin/bash
-PYTHONPATH="/Users/mdniajul.hasan/Documents/PERSONAL/tokenxray/src" python3 -m tokenxray "$@"
