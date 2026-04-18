@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 
-from tokenxray.config import CLAUDE_PROJECTS_DIR, GEMINI_SESSIONS_DIR, get_pricing
+from tokenxray.config import CLAUDE_PROJECTS_DIR, GEMINI_SESSIONS_DIR, COPILOT_WORKSPACE_DIR, get_pricing
 
 
 def find_session_files(base_path=None):
@@ -267,6 +267,121 @@ def parse_gemini_session(filepath):
     return session
 
 
+def find_copilot_session_files():
+    """Find all GitHub Copilot transcript JSONL files."""
+    if not COPILOT_WORKSPACE_DIR.exists():
+        return []
+    return sorted(glob.glob(
+        str(COPILOT_WORKSPACE_DIR / "*/GitHub.copilot-chat/transcripts/*.jsonl")
+    ))
+
+
+def parse_copilot_session(filepath):
+    """Parse a GitHub Copilot transcript JSONL file.
+
+    Note: Copilot transcripts don't include token usage data (marked ephemeral
+    in the schema). We estimate tokens from message character counts (~4 chars/token).
+    """
+    entries = []
+    with open(filepath) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entries.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+
+    session_id = Path(filepath).stem
+    # workspace hash from path
+    ws_hash = Path(filepath).parent.parent.parent.name[:8]
+
+    session = {
+        "file": filepath,
+        "id": session_id[:12],
+        "full_id": session_id,
+        "project": f"copilot/{ws_hash}",
+        "source": "copilot",
+        "turns": [],
+        "user_messages": [],
+        "tool_calls": defaultdict(int),
+        "tool_results_chars": 0,
+        "assistant_output_chars": 0,
+        "models_used": set(),
+        "start_time": None,
+        "end_time": None,
+        "total_input": 0,
+        "total_output": 0,
+        "total_cache_read": 0,
+        "total_cache_create": 0,
+    }
+
+    # Track current turn's accumulated chars for token estimation
+    current_turn_input_chars = 0
+    current_turn_output_chars = 0
+
+    for entry in entries:
+        etype = entry.get("type", "")
+        data = entry.get("data", {})
+
+        ts = entry.get("timestamp")
+        if ts:
+            try:
+                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                if session["start_time"] is None:
+                    session["start_time"] = dt
+                session["end_time"] = dt
+            except (ValueError, AttributeError):
+                pass
+
+        if etype == "session.start":
+            model = data.get("selectedModel", "copilot-agent")
+            session["models_used"].add(model)
+
+        elif etype == "user.message":
+            content = data.get("content", "")
+            if isinstance(content, str):
+                session["user_messages"].append(len(content))
+                current_turn_input_chars += len(content)
+
+        elif etype == "assistant.message":
+            content = data.get("content", "")
+            if isinstance(content, str):
+                session["assistant_output_chars"] += len(content)
+                current_turn_output_chars += len(content)
+
+        elif etype == "tool.execution_start":
+            tool_name = data.get("toolId", data.get("toolCallId", "unknown"))
+            session["tool_calls"][tool_name] += 1
+
+        elif etype == "assistant.turn_end":
+            # Estimate tokens from chars (~4 chars per token)
+            est_input = current_turn_input_chars // 4
+            est_output = current_turn_output_chars // 4
+
+            if est_input > 0 or est_output > 0:
+                session["total_input"] += est_input
+                session["total_output"] += est_output
+
+                session["turns"].append({
+                    "num": len(session["turns"]) + 1,
+                    "input": est_input,
+                    "output": est_output,
+                    "cache_read": 0,
+                    "cache_create": 0,
+                    "total_sent": est_input,
+                    "model": list(session["models_used"])[0] if session["models_used"] else "unknown",
+                })
+
+            # Accumulate input for next turn (context grows)
+            current_turn_input_chars += current_turn_output_chars
+            current_turn_output_chars = 0
+
+    session["models_used"] = list(session["models_used"])
+    return session
+
+
 def load_all_sessions(base_path=None, include_gemini=True, source_filter=None):
     """Parse all sessions and return those with usage data."""
     sessions = []
@@ -288,6 +403,17 @@ def load_all_sessions(base_path=None, include_gemini=True, source_filter=None):
         for f in find_gemini_session_files():
             try:
                 s = parse_gemini_session(f)
+                if s["turns"]:
+                    s["cost"] = calc_cost(s)
+                    sessions.append(s)
+            except Exception:
+                continue
+
+    # GitHub Copilot sessions (estimated tokens — no billing data available)
+    if source_filter in (None, "all", "copilot") and base_path is None:
+        for f in find_copilot_session_files():
+            try:
+                s = parse_copilot_session(f)
                 if s["turns"]:
                     s["cost"] = calc_cost(s)
                     sessions.append(s)

@@ -6,6 +6,7 @@ from pathlib import Path
 
 CLAUDE_PROJECTS_DIR = Path.home() / ".claude" / "projects"
 GEMINI_SESSIONS_DIR = Path.home() / ".gemini" / "tmp"
+COPILOT_WORKSPACE_DIR = Path.home() / "Library" / "Application Support" / "Code" / "User" / "workspaceStorage"
 SETTINGS_FILE = Path.home() / ".claude" / "settings.json"
 DATA_DIR = Path.home() / ".tokenxray"
 BASELINE_FILE = DATA_DIR / "baseline.json"
@@ -38,6 +39,12 @@ PRICING = {
         "input": 0.80, "output": 4.0,
         "cache_read": 0.08, "cache_create": 1.0,
         "label": "Haiku 4.5",
+    },
+    # Copilot (estimated from char counts — no real token data available)
+    "copilot-agent": {
+        "input": 3.0, "output": 15.0,
+        "cache_read": 0.30, "cache_create": 3.75,
+        "label": "Copilot",
     },
     # Gemini models (<=200K context tier)
     "gemini-2.5-pro": {

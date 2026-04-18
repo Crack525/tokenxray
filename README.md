@@ -195,10 +195,13 @@ tokenxray --source gemini
 
 # View everything (default)
 tokenxray --source all
+
+# View only Copilot sessions
+tokenxray --source copilot
 ```
 
-### GitHub Copilot
-Not yet supported — Copilot doesn't store token usage data locally.
+### GitHub Copilot (VS Code)
+Reads transcript JSONL from VS Code workspace storage. **Limitation:** Copilot marks token usage events as ephemeral (in-memory only), so token counts are estimated from message character lengths (~4 chars/token). Turn counts and tool usage are accurate.
 
 **Your data stays local.** TokenXRay reads files on your machine and writes to `~/.tokenxray/`. Nothing is sent anywhere.
 
@@ -212,6 +215,7 @@ Not yet supported — Copilot doesn't store token usage data locally.
 | Claude Haiku 4.5 | $0.80/MTok | $4/MTok | $0.08/MTok | $1.00/MTok |
 | Gemini 2.5 Pro | $1.25/MTok | $10/MTok | $0.31/MTok | — |
 | Gemini 2.5 Flash | $0.15/MTok | $0.60/MTok | $0.04/MTok | — |
+| Copilot (estimated) | — | — | — | — |
 
 ## Key Insights From Our Research
 
