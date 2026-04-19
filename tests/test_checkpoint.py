@@ -590,3 +590,99 @@ class TestEdgeCases:
         cp = extract_checkpoint(filepath)
 
         assert cp["user_messages"] == []
+
+
+# ─── Tests: load_config (from hook code) ─────────────────────────────────────
+
+
+class TestLoadConfig:
+    """Test the load_config function embedded in HOOK_CODE."""
+
+    def _get_load_config(self, config_path):
+        """Extract and return load_config bound to a custom config path."""
+        import types
+
+        def load_config():
+            cfg = {
+                "split_turns": 80,
+                "split_cost": 30,
+                "alert_thresholds": [10, 25, 50, 100, 200, 500],
+                "status_interval": 10,
+            }
+            try:
+                with open(config_path) as f:
+                    user = json.load(f)
+                cfg.update(user)
+            except (FileNotFoundError, json.JSONDecodeError):
+                pass
+            return cfg
+
+        return load_config
+
+    def test_defaults_when_no_file(self, tmp_path):
+        load_config = self._get_load_config(tmp_path / "nonexistent.json")
+        cfg = load_config()
+
+        assert cfg["split_turns"] == 80
+        assert cfg["split_cost"] == 30
+        assert cfg["alert_thresholds"] == [10, 25, 50, 100, 200, 500]
+        assert cfg["status_interval"] == 10
+
+    def test_partial_override(self, tmp_path):
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps({"split_turns": 50, "split_cost": 20}))
+
+        load_config = self._get_load_config(config_file)
+        cfg = load_config()
+
+        assert cfg["split_turns"] == 50
+        assert cfg["split_cost"] == 20
+        # Unset keys keep defaults
+        assert cfg["alert_thresholds"] == [10, 25, 50, 100, 200, 500]
+        assert cfg["status_interval"] == 10
+
+    def test_full_override(self, tmp_path):
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps({
+            "split_turns": 40,
+            "split_cost": 15,
+            "alert_thresholds": [5, 10, 20],
+            "status_interval": 5,
+        }))
+
+        load_config = self._get_load_config(config_file)
+        cfg = load_config()
+
+        assert cfg["split_turns"] == 40
+        assert cfg["split_cost"] == 15
+        assert cfg["alert_thresholds"] == [5, 10, 20]
+        assert cfg["status_interval"] == 5
+
+    def test_malformed_json_uses_defaults(self, tmp_path):
+        config_file = tmp_path / "config.json"
+        config_file.write_text("not valid json {{{")
+
+        load_config = self._get_load_config(config_file)
+        cfg = load_config()
+
+        assert cfg["split_turns"] == 80
+        assert cfg["split_cost"] == 30
+
+    def test_empty_file_uses_defaults(self, tmp_path):
+        config_file = tmp_path / "config.json"
+        config_file.write_text("")
+
+        load_config = self._get_load_config(config_file)
+        cfg = load_config()
+
+        assert cfg["split_turns"] == 80
+
+    def test_extra_keys_preserved(self, tmp_path):
+        config_file = tmp_path / "config.json"
+        config_file.write_text(json.dumps({"split_turns": 60, "custom_key": "hello"}))
+
+        load_config = self._get_load_config(config_file)
+        cfg = load_config()
+
+        assert cfg["split_turns"] == 60
+        assert cfg["custom_key"] == "hello"

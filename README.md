@@ -68,10 +68,13 @@ tokenxray --diagnose
 tokenxray --baseline
 tokenxray --compare
 
+# Interactive HTML dashboard
+tokenxray --dashboard
+
 # Export for spreadsheets
 tokenxray --export csv > sessions.csv
 
-# Install live cost tracking in Claude Code
+# Install live cost tracking + auto-checkpoint in Claude Code
 tokenxray --install-hook --confirm
 ```
 
@@ -140,22 +143,71 @@ TokenXRay - Diagnosis & Recommendations
         Action: Use Sonnet for routine tasks.
 ```
 
-## Live Cost Tracking
+## Interactive Dashboard
 
-Install a Claude Code hook that tracks your spending in real-time:
+Generate a self-contained HTML dashboard with charts and heatmaps:
+
+```bash
+tokenxray --dashboard
+```
+
+Opens an interactive dashboard with:
+- Cost breakdown by session segment (Chart.js bar/pie charts)
+- Session cost heatmap over time
+- Token type distribution (input, output, cache read, cache create)
+- Actionable recommendations based on your usage patterns
+
+The dashboard is a single HTML file — no server, no dependencies, works offline.
+
+## Live Cost Tracking + Auto-Checkpoint
+
+Install Claude Code hooks that track spending and auto-save session state:
 
 ```bash
 tokenxray --install-hook --confirm
 ```
 
-This adds a PostToolUse hook that:
+This installs two hooks:
+
+**Cost Hook** (PostToolUse) — runs after every tool use:
 - Tracks running cost for each session
-- Alerts when you cross $10, $25, $50, $100, $200 thresholds
-- Shows periodic cost updates every 20 turns
+- Alerts when you cross cost thresholds ($10, $25, $50, $100, $200, $500)
+- Shows periodic cost updates every 10 turns
+- **Auto-checkpoints** when sessions get expensive (80+ turns or $30+)
 
 ```
-[TokenXRay] Session cost: $25.42 (crossed $25 threshold, 142 turns, ctx 98K)
+[TokenXRay] Opus — turn 40, $12.50 total, ~$0.31/turn, ctx 85K
+[TokenXRay] $25.42 spent (crossed $25) — Opus, 142 turns, ctx 98K
+[TokenXRay] Consider splitting this session! (80 turns, $31.20, ctx 120K)
+[TokenXRay] Auto-checkpoint saved to .claude/checkpoint.md
 ```
+
+**Resume Hook** (UserPromptSubmit) — runs when you start a new session:
+- Detects `.claude/checkpoint.md` from the previous session
+- Tells Claude to read it — full context restored automatically
+- Only fires once, then renames the file so it doesn't repeat
+
+**Zero user action required.** Expensive session auto-saves, next session auto-resumes.
+
+### Configurable Guardrails
+
+Customize thresholds via `~/.tokenxray/config.json`:
+
+```json
+{
+    "split_turns": 80,
+    "split_cost": 30,
+    "alert_thresholds": [10, 25, 50, 100, 200, 500],
+    "status_interval": 10
+}
+```
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `split_turns` | 80 | Warn + checkpoint after this many turns |
+| `split_cost` | 30 | Warn + checkpoint after this cost ($) |
+| `alert_thresholds` | [10,25,50,100,200,500] | Cost milestones that trigger alerts |
+| `status_interval` | 10 | Show status update every N turns |
 
 ## Before / After Comparison
 
@@ -237,12 +289,11 @@ A verbose 3K-token response doesn't just cost output tokens. That response enter
 
 ## What's Next
 
-TokenXRay currently gives you **visibility** — it shows where tokens go. Phase 2 will add **optimization**:
+TokenXRay gives you **visibility** (where tokens go) and **guardrails** (auto-checkpoint expensive sessions). Next up:
 
-- Context optimizer proxy for Claude Code
-- Conversation history summarization
-- Tool result pruning
+- Session optimizer — intelligent context pruning and tool result summarization
 - Cache-layout optimization for maximum cache hits
+- Team usage dashboards
 
 ## Requirements
 

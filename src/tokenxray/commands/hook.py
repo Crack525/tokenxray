@@ -28,8 +28,27 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 COST_LOG = Path.home() / ".tokenxray" / "live_session.json"
+CONFIG_FILE = Path.home() / ".tokenxray" / "config.json"
 PROJECTS_DIR = Path.home() / ".claude" / "projects"
 SETTINGS_FILE = Path.home() / ".claude" / "settings.json"
+
+# Defaults — override via ~/.tokenxray/config.json
+DEFAULT_CONFIG = {
+    "split_turns": 80,
+    "split_cost": 30,
+    "alert_thresholds": [10, 25, 50, 100, 200, 500],
+    "status_interval": 10,
+}
+
+def load_config():
+    cfg = dict(DEFAULT_CONFIG)
+    try:
+        with open(CONFIG_FILE) as f:
+            user = json.load(f)
+        cfg.update(user)
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    return cfg
 
 PRICING = {
     "claude-opus-4-6": {"input": 15.0, "output": 75.0, "cache_read": 1.50, "cache_create": 18.75, "label": "Opus"},
@@ -220,6 +239,8 @@ def main():
     except (json.JSONDecodeError, EOFError):
         return
 
+    cfg = load_config()
+
     session_id = data.get("session_id", "unknown")
     jsonl_files = glob.glob(str(PROJECTS_DIR / "**" / f"{session_id}.jsonl"), recursive=True)
     if not jsonl_files:
@@ -296,7 +317,7 @@ def main():
     model_label = get_current_model()
 
     # ─── Split session warning + auto-checkpoint ────────────────────────
-    if not tracker.get("split_warned") and (turn_count > 80 or total_cost >= 30):
+    if not tracker.get("split_warned") and (turn_count > cfg["split_turns"] or total_cost >= cfg["split_cost"]):
         tracker["split_warned"] = True
         with open(COST_LOG, "w") as f:
             json.dump(tracker, f)
@@ -337,7 +358,7 @@ def main():
             )
 
     # ─── Cost threshold alerts ───────────────────────────────────────────
-    for t in [10, 25, 50, 100, 200, 500]:
+    for t in cfg["alert_thresholds"]:
         if total_cost >= t and t not in prev_alerts:
             tracker["alerts"].append(t)
             with open(COST_LOG, "w") as f:
@@ -351,7 +372,7 @@ def main():
             return
 
     # ─── Periodic status every 10 turns ──────────────────────────────────
-    if turn_count % 10 == 0:
+    if turn_count % cfg["status_interval"] == 0:
         print(
             f"\\033[2m[TokenXRay] {model_label} \\u2014 turn {turn_count}, "
             f"${total_cost:.2f} total, ~${cost_per_turn:.2f}/turn, "
