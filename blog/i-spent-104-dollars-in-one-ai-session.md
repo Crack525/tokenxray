@@ -83,14 +83,14 @@ Drill into any session and it breaks down the cost by cache read, cache create, 
 
 ### What it does about it
 
-TokenXRay isn't just a dashboard. It installs hooks that intervene in real-time:
+After a one-time `tokenxray --install-hook --confirm`, two Claude Code hooks run automatically in every session:
 
-- **Live cost tracking** — shows running cost after every tool use
-- **Threshold alerts** — warns when you cross $10, $25, $50, $100
-- **Auto-checkpoint** — at 80 turns or $30, automatically saves your session state (goal, files modified, recent context) to `.claude/checkpoint.md`
-- **Auto-resume** — when you start a fresh session, the resume hook detects the checkpoint and restores context automatically
+- **Cost hook** — tracks spending silently in the background. Shows status every 10 turns, alerts at cost thresholds. At 80 turns or $30, auto-saves your session state to `.claude/checkpoint.md` — insurance in case you decide to split, or Claude crashes, or context compresses badly.
+- **Resume hook** — when you start a fresh session, detects the checkpoint and restores context automatically. Fires once, then gets out of the way.
 
-Zero user action. Expensive session auto-saves, next session auto-resumes. You get the cost benefits of short sessions without losing your train of thought.
+You never run `tokenxray` during a session. The hooks handle it.
+
+The real value isn't the real-time alerts — it's the retrospective. Running `tokenxray --diagnose` once a week teaches you to scope sessions better upfront. After a few runs, you start naturally thinking "I'll do the refactor, then start fresh for tests" instead of running a 200-turn marathon. That's where the actual savings come from.
 
 ## How It Compares
 
@@ -104,7 +104,7 @@ TokenXRay is different: local-first, zero-config, aimed at the individual develo
 | **Data** | Sent to their cloud | Stays on your machine |
 | **Target** | Platform engineering teams | Individual developers |
 | **Insight** | Request-level tracing | Session-level waste analysis |
-| **Action** | Dashboards | Hooks that intervene in real-time |
+| **Action** | Dashboards | Auto-checkpoint + resume hooks |
 | **AI tools** | Generic LLM APIs | Claude Code + Gemini + Copilot natively |
 | **Cost** | Free tier → paid plans | Free, forever |
 

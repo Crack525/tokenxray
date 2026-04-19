@@ -8,8 +8,6 @@
 
 I spent $104 in a single Claude Code session. Then I audited all 514 of mine and found that **9% of sessions burned 92% of the money** — $11,600 out of $12,600 total. The culprit: context that grows quadratically, cache creation fees nobody mentions, and tool results that ride in context forever.
 
-TokenXRay reads your local session logs, shows you exactly where tokens go, and auto-checkpoints expensive sessions so you can split them without losing context.
-
 <p align="center">
   <img src="blog/tokenxray-explained.png" alt="TokenXRay — The Problem and Solution" width="800">
 </p>
@@ -18,23 +16,54 @@ TokenXRay reads your local session logs, shows you exactly where tokens go, and 
 
 ```bash
 pip install tokenxray
+tokenxray --install-hook --confirm   # one-time setup, then forget about it
 ```
 
 **Zero dependencies.** Pure Python stdlib. Python 3.9+.
 
-## Quick Start
+## How It Works
 
-```bash
-tokenxray                          # Session overview — where your money goes
-tokenxray --session <id>           # Deep dive into a specific session
-tokenxray --diagnose               # Actionable recommendations
-tokenxray --projects               # Cost breakdown by project
-tokenxray --dashboard              # Interactive HTML dashboard
-tokenxray --checkpoint             # Extract session state to .claude/checkpoint.md
-tokenxray --install-hook --confirm # Live cost tracking + auto-checkpoint
+TokenXRay has two layers: **hooks** that run automatically inside Claude Code, and a **CLI** you run when you want to review your spending.
+
+### Daily: Hooks (automatic, zero effort)
+
+After `--install-hook`, every Claude Code session gets two hooks that run silently in the background:
+
+1. **Cost hook** — tracks your running cost after every tool use. Shows a status line every 10 turns. Alerts when you cross $10/$25/$50/$100. At 80 turns or $30, auto-saves your session state to `.claude/checkpoint.md`.
+2. **Resume hook** — when you start a new session, detects the checkpoint and restores context automatically. One-shot: fires once, then gets out of the way.
+
+Your daily workflow:
+```
+Open Claude Code → checkpoint detected? context restored automatically
+       ↓
+Work normally → cost hook tracks silently in background
+       ↓
+Hit 80 turns or $30 → checkpoint auto-saved
+       ↓
+You decide: keep going or start fresh (checkpoint is saved either way)
+       ↓
+Start fresh → next session picks up where you left off
 ```
 
-## What It Shows You
+You never run `tokenxray` during a session. The hooks handle it.
+
+```
+[TokenXRay] Opus — turn 40, $12.50 total, ~$0.31/turn, ctx 85K
+[TokenXRay] Consider splitting this session! (80 turns, $31.20, ctx 120K)
+[TokenXRay] Auto-checkpoint saved to .claude/checkpoint.md
+```
+
+### Weekly: CLI (manual review)
+
+Run these when you want to understand your spending patterns and change habits:
+
+```bash
+tokenxray                  # Overview — where your money goes
+tokenxray --diagnose       # Specific recommendations
+tokenxray --session <id>   # Deep dive into one session
+tokenxray --dashboard      # Interactive HTML charts
+tokenxray --projects       # Cost by project
+```
 
 ```
 TokenXRay - Session Overview
@@ -48,26 +77,11 @@ TokenXRay - Session Overview
           100+:   48 sessions  avg   $241   total $11,600  ████████░░ 92%
 ```
 
-Drill into any session for cost breakdown by token type, context growth curve, and waste ratio. Run `--diagnose` for specific actions: split long sessions, switch to Sonnet for routine tasks, avoid subagents for simple lookups.
+The retrospective analysis is the most valuable part. After a few `--diagnose` runs, you start naturally scoping sessions better — "I'll do the refactor, then start fresh for tests." That's where the real savings come from.
 
-## Live Cost Tracking + Auto-Checkpoint
+## Configuration
 
-```bash
-tokenxray --install-hook --confirm
-```
-
-Installs two Claude Code hooks:
-
-- **Cost hook** — tracks running cost after every tool use, alerts at $10/$25/$50/$100 thresholds, auto-checkpoints at 80 turns or $30
-- **Resume hook** — detects checkpoint from previous session, restores context automatically on next session start
-
-```
-[TokenXRay] Opus — turn 40, $12.50 total, ~$0.31/turn, ctx 85K
-[TokenXRay] Consider splitting this session! (80 turns, $31.20, ctx 120K)
-[TokenXRay] Auto-checkpoint saved to .claude/checkpoint.md
-```
-
-Customize thresholds in `~/.tokenxray/config.json`:
+Customize hook thresholds in `~/.tokenxray/config.json`:
 
 ```json
 {
@@ -104,6 +118,7 @@ tokenxray --source all       # Everything (default)
 | `--no-color` | Disable colored output |
 | `--baseline` / `--compare` | Save baseline, compare after changing habits |
 | `--export csv` | Export sessions to CSV |
+| `--checkpoint` | Manually extract session state |
 
 ## The Full Story
 
