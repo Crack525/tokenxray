@@ -496,7 +496,7 @@ def _render_html(data):
 
 <div class="footer">
   TokenXRay &mdash; See where your AI coding tokens actually go.
-  &bull; <a href="https://github.com/niajulhasan/tokenxray" style="color: var(--accent);">GitHub</a>
+  &bull; <a href="https://github.com/Crack525/tokenxray" style="color: var(--accent);">GitHub</a>
   &bull; pip install tokenxray
 </div>
 

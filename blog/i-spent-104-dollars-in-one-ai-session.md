@@ -1,4 +1,4 @@
-# I Spent $104 in a Single AI Coding Session. Then I Audited All 514 of Mine.
+# I Spent $104 in a Single AI Coding Session. Then I Audited All 686 of Mine.
 
 *April 2026*
 
@@ -12,22 +12,22 @@ I wrote a script to analyze the damage. The pattern was worse than I expected.
 
 ## The Audit
 
-I analyzed **514 Claude Code sessions** — every session I'd run, totaling **$12,600+ in API costs**. I broke them down by length:
+I analyzed **686 Claude Code sessions** — every session I'd run, totaling **$14,000+ in API costs**. I broke them down by length:
 
 ```
 Session Segments:
-  1-10 turns:   329 sessions (64%)  →  avg $0.19   →  <1% of total spend
-  11-30 turns:   76 sessions (15%)  →  avg $4.01   →   2% of total spend
-  31-100 turns:  61 sessions (12%)  →  avg $11.05  →   5% of total spend
-  100+ turns:    48 sessions  (9%)  →  avg $241    →  92% of total spend
+  1-10 turns:   388 sessions (57%)  →  avg $0.19   →  <1% of total spend
+  11-30 turns:  110 sessions (16%)  →  avg $3.18   →   2% of total spend
+  31-100 turns: 117 sessions (17%)  →  avg $9.08   →   8% of total spend
+  100+ turns:    71 sessions (10%)  →  avg $177    →  89% of total spend
                                                        ^^^
 ```
 
 Read that last line again.
 
-**9% of my sessions burned 92% of my money.**
+**10% of my sessions burned 89% of my money.**
 
-The 48 marathon sessions — the ones where I was "in the zone," deep in a refactor or a tricky bug — those cost me $11,600. The other 466 sessions? $1,000 combined.
+The 71 marathon sessions — the ones where I was "in the zone," deep in a refactor or a tricky bug — those cost me $12,560. The other 615 sessions? $1,484 combined.
 
 ## What's Actually Eating Your Tokens
 
@@ -53,7 +53,7 @@ It costs **100x or more.**
 
 Context accumulates quadratically. Every new turn processes all previous context. Turn 1 reads 18K tokens. Turn 100 reads 68K. Turn 200 reads 131K. Turn 399 reads your entire conversation history — compressed, expanded, re-cached — every single time.
 
-My most expensive session: **399 turns, 2.4 hours, $104.** The context hit 131K tokens before auto-compaction kicked in.
+That session: **399 turns, 2.4 hours, $104.** The context hit 131K tokens before auto-compaction kicked in. (When I later audited all 686 sessions, I found three sessions over $1,000 — the worst was $1,477 across 4,389 turns. The pattern compounds the longer you let it run.)
 
 ## So I Built TokenXRay
 
@@ -70,13 +70,13 @@ pip install tokenxray
 ```
 TokenXRay - Session Overview
 ----------------------------------------------------------------------
-  514 sessions    43,000+ total turns    $12,600+ total cost
+  686 sessions    53,000+ total turns    $14,000+ total cost
 
   Segment Breakdown:
-    1-10 turns:  329 sessions  avg  $0.19   total    $62   ░░░░░░░░░░  0%
-         11-30:   76 sessions  avg  $4.01   total   $305   ░░░░░░░░░░  2%
-        31-100:   61 sessions  avg $11.05   total   $674   █░░░░░░░░░  5%
-          100+:   48 sessions  avg   $241   total $11,600  ████████░░ 92%
+    1-10 turns:  388 sessions  avg  $0.19   total    $72   ░░░░░░░░░░  1%
+         11-30:  110 sessions  avg  $3.18   total   $349   ░░░░░░░░░░  2%
+        31-100:  117 sessions  avg  $9.08   total  $1,063  █░░░░░░░░░  8%
+          100+:   71 sessions  avg   $177   total $12,560  █████████░ 89%
 ```
 
 Drill into any session and it breaks down the cost by cache read, cache create, and output — then shows the waste ratio (my $104 session: 2.9K tokens of actual questions, 24.4M tokens of re-sent context). It flags marathon sessions and high cache creation costs with specific actions.
@@ -85,7 +85,7 @@ Drill into any session and it breaks down the cost by cache read, cache create, 
 
 After a one-time `tokenxray --install-hook --confirm`, two Claude Code hooks run automatically in every session:
 
-- **Cost hook** — tracks spending silently in the background. Shows status every 10 turns, alerts at cost thresholds. At 80 turns or $30, auto-saves your session state to `.claude/checkpoint.md` — insurance in case you decide to split, or Claude crashes, or context compresses badly.
+- **Cost hook** — tracks spending silently in the background. Shows status every 10 turns, alerts at cost thresholds. At 80 turns or $30, auto-saves your session state to `.claude/checkpoint.md`. If you want the session blocked rather than just warned, enable hard-stop mode in `~/.tokenxray/config.json` — it returns exit code 2 past a configurable ceiling, so Claude is forced to wrap up before any next action.
 - **Resume hook** — when you start a fresh session, detects the checkpoint and restores context automatically. Fires once, then gets out of the way.
 
 You never run `tokenxray` during a session. The hooks handle it.
@@ -122,7 +122,7 @@ The fix isn't complicated. It's session discipline:
 
 TokenXRay automates #1 completely. It shows you #2 and #3 in the diagnosis.
 
-After two weeks of splitting sessions at 80 turns and being conscious of model choice, my average session cost dropped noticeably. Applied retroactively to my full 514-session history, these patterns would have saved me over **$8,000**.
+A 200-turn session doesn't cost 2× a 100-turn session — it costs roughly 4× more, because context compounds on every turn. Applied retroactively to my full 686-session history, these patterns would have saved me over **$8,000**.
 
 ## Try It
 
@@ -141,4 +141,4 @@ tokenxray --install-hook --confirm
 
 **Your data stays local.** Zero dependencies. Python 3.9+. Works with Claude Code, Gemini CLI, and GitHub Copilot.
 
-[GitHub](https://github.com/niajulhasan/tokenxray) | [PyPI](https://pypi.org/project/tokenxray/)
+[GitHub](https://github.com/Crack525/tokenxray) | [PyPI](https://pypi.org/project/tokenxray/)
