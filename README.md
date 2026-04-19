@@ -71,6 +71,9 @@ tokenxray --compare
 # Interactive HTML dashboard
 tokenxray --dashboard
 
+# Extract checkpoint from most recent session
+tokenxray --checkpoint
+
 # Export for spreadsheets
 tokenxray --export csv > sessions.csv
 
@@ -189,6 +192,18 @@ This installs two hooks:
 
 **Zero user action required.** Expensive session auto-saves, next session auto-resumes.
 
+### Manual Checkpoint
+
+Extract a checkpoint from the most recent session at any time:
+
+```bash
+tokenxray --checkpoint
+```
+
+This reads the latest session JSONL, extracts goal, files modified, commands run, and assistant context, then saves it to `.claude/checkpoint.md` in the project directory.
+
+If you're inside a Claude Code session, you can also use the `/checkpoint` slash command — Claude will synthesize a richer checkpoint from its own context and optionally save to crossmem.
+
 ### Configurable Guardrails
 
 Customize thresholds via `~/.tokenxray/config.json`:
@@ -265,9 +280,9 @@ Reads transcript JSONL from VS Code workspace storage. **Limitation:** Copilot m
 | Claude Sonnet 4.6 | $3/MTok | $15/MTok | $0.30/MTok | $3.75/MTok |
 | Claude Sonnet 4.5 | $3/MTok | $15/MTok | $0.30/MTok | $3.75/MTok |
 | Claude Haiku 4.5 | $0.80/MTok | $4/MTok | $0.08/MTok | $1.00/MTok |
-| Gemini 2.5 Pro | $1.25/MTok | $10/MTok | $0.31/MTok | — |
-| Gemini 2.5 Flash | $0.15/MTok | $0.60/MTok | $0.04/MTok | — |
-| Copilot (estimated) | — | — | — | — |
+| Gemini 2.5 Pro | $1.25/MTok | $10/MTok | $0.3125/MTok | $1.25/MTok |
+| Gemini 2.5 Flash | $0.15/MTok | $0.60/MTok | $0.0375/MTok | $0.15/MTok |
+| Copilot (estimated) | ~$3/MTok | ~$15/MTok | — | — |
 
 ## Key Insights From Our Research
 
@@ -277,7 +292,7 @@ Everyone talks about prompt caching saving money (and it does — 78% in our cas
 
 **2. Your questions are noise in the token stream**
 
-Across 514 sessions, actual user questions averaged **0.01%** of total input tokens. The other 99.99% is system prompts, tool definitions, conversation history, and tool results — all re-sent every turn.
+Across 514 sessions, actual user questions averaged **0.012%** of total input tokens. The other 99.99% is system prompts, tool definitions, conversation history, and tool results — all re-sent every turn.
 
 **3. Marathon sessions are exponentially expensive**
 
@@ -294,6 +309,15 @@ TokenXRay gives you **visibility** (where tokens go) and **guardrails** (auto-ch
 - Session optimizer — intelligent context pruning and tool result summarization
 - Cache-layout optimization for maximum cache hits
 - Team usage dashboards
+
+## Additional Flags
+
+| Flag | Description |
+|------|-------------|
+| `--top N` | Show top N sessions (default: 15) |
+| `--path <dir>` | Custom path to Claude projects directory |
+| `--no-color` | Disable colored output |
+| `--source <tool>` | Filter by tool: `claude`, `gemini`, `copilot`, or `all` |
 
 ## Requirements
 
