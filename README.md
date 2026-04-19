@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icon.svg" width="64" height="64" alt="TokenXRay icon">
+</p>
+
 # TokenXRay
 
 **See where your AI coding tokens actually go.**
@@ -25,6 +29,29 @@ Session Segments:
 - Tool results (bash output, file reads) ride in context **forever**, never pruned
 
 No existing tool shows you this. Not your API dashboard. Not your billing page. We had to write custom scripts to see it. So we turned those scripts into TokenXRay.
+
+### How TokenXRay Breaks the Cost Loop
+
+```
+Without TokenXRay              With TokenXRay
+──────────────────             ──────────────────
+Start session                  Start session
+       │                              │
+Context grows every turn       Live cost tracking each turn
+       │                              │
+Cache creation at 25%          Threshold reached?
+       │                          no / \ yes
+100+ turns, $241 avg            ┌──┘   └──┐
+       │                        │    Auto-checkpoint
+No visibility until bill        │    saves state
+                                │         │
+                                │    Start new session
+                                │         │
+                                │    Resume hook restores
+                                │    context automatically
+                                │         │
+                                └─────────┘
+```
 
 ## Install
 

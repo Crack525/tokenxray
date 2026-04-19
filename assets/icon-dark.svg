@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Dark background for favicons/avatars -->
+  <rect width="64" height="64" rx="14" fill="#0A1628"/>
+
+  <!-- Token (coin) -->
+  <circle cx="32" cy="32" r="26" stroke="#00D9FF" stroke-width="3"/>
+
+  <!-- Cross-section strata: edge-to-edge, thickness = cost proportion -->
+  <!-- Cache creation — the massive HIDDEN cost, dashed = "was invisible, now revealed" -->
+  <line x1="9" y1="20" x2="55" y2="20" stroke="#00D9FF" stroke-width="12" stroke-linecap="round" stroke-dasharray="10 5"/>
+  <!-- Cache read — substantial but thinner -->
+  <line x1="7" y1="36" x2="57" y2="36" stroke="#00D9FF" stroke-width="6" stroke-linecap="round"/>
+  <!-- Your actual questions — barely visible -->
+  <line x1="12" y1="48" x2="52" y2="48" stroke="#00D9FF" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- $ anchors "this is about money" -->
+  <text x="32" y="57" text-anchor="middle" font-family="system-ui, sans-serif"
+        font-size="11" font-weight="700" fill="#00D9FF">$</text>
