@@ -38,6 +38,9 @@ DEFAULT_CONFIG = {
     "split_cost": 30,
     "alert_thresholds": [10, 25, 50, 100, 200, 500],
     "status_interval": 10,
+    "hard_stop": False,
+    "hard_stop_turns": 120,
+    "hard_stop_cost": 50,
 }
 
 def load_config():
@@ -314,6 +317,22 @@ def main():
     ctx_str = f"{last_ctx/1000:.0f}K" if last_ctx < 1e6 else f"{last_ctx/1e6:.1f}M"
     cost_per_turn = total_cost / turn_count if turn_count > 0 else 0
     model_label = get_current_model()
+
+    # ─── Hard stop: block further tool use past ceiling (fires every call) ─
+    if cfg.get("hard_stop"):
+        stop_turns = cfg.get("hard_stop_turns", 120)
+        stop_cost = cfg.get("hard_stop_cost", 50)
+        if turn_count >= stop_turns or total_cost >= stop_cost:
+            reason = f"turn limit ({turn_count}/{stop_turns})" if turn_count >= stop_turns else f"cost limit (${total_cost:.2f}/${stop_cost})"
+            print(
+                f"\\n\\033[1m\\033[31m[TokenXRay] HARD STOP \\u2014 {reason} reached. "
+                f"Session blocked.\\033[0m\\n"
+                f"\\033[1mPlease wrap up and start a fresh session.\\033[0m\\n"
+                f"\\033[2mCheckpoint was auto-saved earlier. "
+                f"Disable with: hard_stop=false in ~/.tokenxray/config.json\\033[0m",
+                file=sys.stdout,
+            )
+            sys.exit(2)
 
     # ─── Cost threshold alerts (fire even without new turn) ──────────────
     new_threshold = False
