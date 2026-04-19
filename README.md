@@ -53,6 +53,14 @@ You never run `tokenxray` during a session. The hooks handle it.
 [TokenXRay] Auto-checkpoint saved to .claude/checkpoint.md
 ```
 
+**Hard-stop mode** (opt-in): block further tool use past a ceiling so Claude is forced to wrap up. Enable in `~/.tokenxray/config.json`:
+
+```json
+{"hard_stop": true, "hard_stop_turns": 120, "hard_stop_cost": 50}
+```
+
+When either ceiling is crossed, the hook exits with code 2. Every subsequent tool call fails with the hard-stop message until you start a fresh session. Off by default — the advisory split warning still fires regardless.
+
 ### Weekly: CLI (manual review)
 
 Run these when you want to understand your spending patterns and change habits:
@@ -88,7 +96,10 @@ Customize hook thresholds in `~/.tokenxray/config.json`:
     "split_turns": 80,
     "split_cost": 30,
     "alert_thresholds": [10, 25, 50, 100, 200, 500],
-    "status_interval": 10
+    "status_interval": 10,
+    "hard_stop": false,
+    "hard_stop_turns": 120,
+    "hard_stop_cost": 50
 }
 ```
 
