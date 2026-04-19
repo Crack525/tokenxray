@@ -391,18 +391,82 @@ if __name__ == "__main__":
 '''
 
 RESUME_HOOK_CODE = '''#!/usr/bin/env python3
-"""TokenXRay resume hook — auto-loads checkpoint in new sessions.
+"""TokenXRay resume hook — last session summary + auto-loads checkpoint.
 
 Runs as a UserPromptSubmit hook. On each user message:
-1. Checks if .claude/checkpoint.md exists in the current directory.
-2. If found and recent (< 48 hours), tells Claude to read it.
-3. Renames checkpoint after first load so it only fires once per session.
+1. Shows a one-line cost summary of the previous session (fires once per session).
+2. Checks if .claude/checkpoint.md exists in the current directory.
+3. If found and recent (< 48 hours), tells Claude to read it.
+4. Renames checkpoint after first load so it only fires once per session.
+
+The summary uses live_session.json (written by the cost hook). On a new session's
+first prompt, live_session.json still holds the PREVIOUS session's data — the cost
+hook hasn't updated it yet. We detect "already shown" by recording the session_id
+we last displayed, so it fires exactly once per session transition.
 """
+import json
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
 
-def main():
+COST_LOG = Path.home() / ".tokenxray" / "live_session.json"
+SUMMARY_SHOWN = Path.home() / ".tokenxray" / ".last_summary_session"
+
+
+def show_last_session_summary():
+    """Show a one-line summary of the previous session (once per new session).
+
+    On the first prompt of a new session, live_session.json still contains
+    the previous session's data. We show it once, then write the session_id
+    to .last_summary_session so we don't repeat.
+    """
+    if not COST_LOG.exists():
+        return
+
+    try:
+        with open(COST_LOG) as f:
+            prev = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return
+
+    prev_session = prev.get("session_id", "")
+    if not prev_session:
+        return
+
+    # Already shown for this session?
+    try:
+        if SUMMARY_SHOWN.exists():
+            if SUMMARY_SHOWN.read_text().strip() == prev_session:
+                return
+    except Exception:
+        pass
+
+    turns = prev.get("turns", 0)
+    cost = prev.get("total_cost", 0.0)
+    model = prev.get("model", "unknown")
+    ctx = prev.get("context_size", 0)
+    if turns == 0 or cost == 0:
+        return
+
+    ctx_str = f"{ctx/1000:.0f}K" if ctx < 1e6 else f"{ctx/1e6:.1f}M"
+    cost_per_turn = cost / turns
+
+    print(
+        f"\\033[2m[TokenXRay] Last session: {turns} turns, "
+        f"${cost:.2f} total, ~${cost_per_turn:.2f}/turn, "
+        f"{model}, ctx {ctx_str}\\033[0m",
+        file=sys.stderr,
+    )
+
+    # Mark as shown
+    try:
+        SUMMARY_SHOWN.write_text(prev_session)
+    except Exception:
+        pass
+
+
+def check_checkpoint():
+    """Load checkpoint if recent and not already loaded."""
     checkpoint = Path.cwd() / ".claude" / "checkpoint.md"
     if not checkpoint.exists():
         return
@@ -436,6 +500,11 @@ def main():
         f"The checkpoint contains: goal, files modified, recent context, and session stats.",
         file=sys.stderr,
     )
+
+
+def main():
+    show_last_session_summary()
+    check_checkpoint()
 
 if __name__ == "__main__":
     main()
