@@ -327,7 +327,7 @@ def main():
                 f"\\n\\033[1m\\033[33m[TokenXRay] ${total_cost:.2f} spent "
                 f"(crossed ${t}) \\u2014 {model_label}, {turn_count} turns, "
                 f"ctx {ctx_str}, ~${cost_per_turn:.2f}/turn\\033[0m",
-                file=sys.stderr,
+                file=sys.stdout,
             )
             return
 
@@ -357,15 +357,15 @@ def main():
                 f"\\n\\033[1m\\033[31m[TokenXRay] Consider splitting this session! "
                 f"({turn_count} turns, ${total_cost:.2f}, ctx {ctx_str}) "
                 f"\\u2014 marathon sessions burn 92% of budget\\033[0m",
-                file=sys.stderr,
+                file=sys.stdout,
             )
             print(
                 f"\\033[1m\\033[32m[TokenXRay] Auto-checkpoint saved to {cp_path}\\033[0m",
-                file=sys.stderr,
+                file=sys.stdout,
             )
             print(
                 f"\\033[2m[TokenXRay] Start a fresh session \\u2014 your context will be restored automatically.\\033[0m",
-                file=sys.stderr,
+                file=sys.stdout,
             )
         except Exception:
             # Still show the split warning even if checkpoint fails
@@ -373,7 +373,7 @@ def main():
                 f"\\n\\033[1m\\033[31m[TokenXRay] Consider splitting this session! "
                 f"({turn_count} turns, ${total_cost:.2f}, ctx {ctx_str}) "
                 f"\\u2014 marathon sessions burn 92% of budget\\033[0m",
-                file=sys.stderr,
+                file=sys.stdout,
             )
 
     # ─── Cost status on every turn once past any threshold ──────────────
@@ -490,15 +490,15 @@ def check_checkpoint():
     age_label = f"{age_hours:.0f}h" if age_hours >= 1 else f"{age_hours * 60:.0f}m"
     print(
         f"\\n[TokenXRay] Previous session checkpoint found ({age_label} ago).",
-        file=sys.stderr,
+        file=sys.stdout,
     )
     print(
         f"Read .claude/checkpoint.md.loaded to continue where the last session left off.",
-        file=sys.stderr,
+        file=sys.stdout,
     )
     print(
         f"The checkpoint contains: goal, files modified, recent context, and session stats.",
-        file=sys.stderr,
+        file=sys.stdout,
     )
 
 
