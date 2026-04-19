@@ -25,6 +25,8 @@ def main():
                         help="Install cost hook (shows session cost so you can decide model)")
     parser.add_argument("--checkpoint", action="store_true",
                         help="Extract checkpoint from most recent session")
+    parser.add_argument("--dashboard", action="store_true",
+                        help="Generate interactive HTML dashboard with charts")
     parser.add_argument("--confirm", action="store_true", help="Auto-confirm hook installation")
     parser.add_argument("--source", choices=["claude", "gemini", "copilot", "all"], default="all",
                         help="Filter by tool (default: all)")
@@ -64,6 +66,9 @@ def main():
         run(args)
     elif args.checkpoint:
         from tokenxray.commands.checkpoint import run
+        run(args)
+    elif args.dashboard:
+        from tokenxray.commands.dashboard import run
         run(args)
     else:
         from tokenxray.commands.overview import run

@@ -12,3 +12,4 @@ venv/
 .tokenxray/
 tokenxray.egg-info/
 uv.lock
+tokenxray_dashboard.html
