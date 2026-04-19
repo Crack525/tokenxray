@@ -4,7 +4,7 @@ import json
 import os
 
 from tokenxray.colors import C
-from tokenxray.config import DATA_DIR, HOOK_SCRIPT, SETTINGS_FILE, LIVE_SESSION_FILE
+from tokenxray.config import DATA_DIR, HOOK_SCRIPT, SETTINGS_FILE
 
 RESUME_HOOK_SCRIPT = DATA_DIR / "resume_hook.py"
 
@@ -309,12 +309,31 @@ def main():
     with open(COST_LOG, "w") as f:
         json.dump(tracker, f)
 
-    if turn_count <= prev_turns:
-        return
+    new_turn = turn_count > prev_turns
 
     ctx_str = f"{last_ctx/1000:.0f}K" if last_ctx < 1e6 else f"{last_ctx/1e6:.1f}M"
     cost_per_turn = total_cost / turn_count if turn_count > 0 else 0
     model_label = get_current_model()
+
+    # ─── Cost threshold alerts (fire even without new turn) ──────────────
+    new_threshold = False
+    for t in cfg["alert_thresholds"]:
+        if total_cost >= t and t not in prev_alerts:
+            new_threshold = True
+            tracker["alerts"].append(t)
+            with open(COST_LOG, "w") as f:
+                json.dump(tracker, f)
+            print(
+                f"\\n\\033[1m\\033[33m[TokenXRay] ${total_cost:.2f} spent "
+                f"(crossed ${t}) \\u2014 {model_label}, {turn_count} turns, "
+                f"ctx {ctx_str}, ~${cost_per_turn:.2f}/turn\\033[0m",
+                file=sys.stderr,
+            )
+            return
+
+    # Below here, only act on new turns to avoid duplicates
+    if not new_turn:
+        return
 
     # ─── Split session warning + auto-checkpoint ────────────────────────
     if not tracker.get("split_warned") and (turn_count > cfg["split_turns"] or total_cost >= cfg["split_cost"]):
@@ -357,22 +376,9 @@ def main():
                 file=sys.stderr,
             )
 
-    # ─── Cost threshold alerts ───────────────────────────────────────────
-    for t in cfg["alert_thresholds"]:
-        if total_cost >= t and t not in prev_alerts:
-            tracker["alerts"].append(t)
-            with open(COST_LOG, "w") as f:
-                json.dump(tracker, f)
-            print(
-                f"\\n\\033[1m\\033[33m[TokenXRay] ${total_cost:.2f} spent "
-                f"(crossed ${t}) \\u2014 {model_label}, {turn_count} turns, "
-                f"ctx {ctx_str}, ~${cost_per_turn:.2f}/turn\\033[0m",
-                file=sys.stderr,
-            )
-            return
-
-    # ─── Periodic status every 10 turns ──────────────────────────────────
-    if turn_count % cfg["status_interval"] == 0:
+    # ─── Cost status on every turn once past any threshold ──────────────
+    past_threshold = len(tracker["alerts"]) > 0
+    if past_threshold or turn_count % cfg["status_interval"] == 0:
         print(
             f"\\033[2m[TokenXRay] {model_label} \\u2014 turn {turn_count}, "
             f"${total_cost:.2f} total, ~${cost_per_turn:.2f}/turn, "
