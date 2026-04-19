@@ -2,6 +2,7 @@
 
 import argparse
 
+from tokenxray import __version__
 from tokenxray.colors import C
 
 
@@ -27,6 +28,9 @@ def main():
     parser.add_argument("--confirm", action="store_true", help="Auto-confirm hook installation")
     parser.add_argument("--source", choices=["claude", "gemini", "copilot", "all"], default="all",
                         help="Filter by tool (default: all)")
+    parser.add_argument("--version", "-v", action="version",
+                        version=f"tokenxray {__version__}",
+                        help="Show version and exit")
     parser.add_argument("--no-color", action="store_true", help="Disable colored output")
 
     args = parser.parse_args()
