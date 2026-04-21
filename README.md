@@ -30,11 +30,11 @@ TokenXRay has two layers: **hooks** that run automatically inside Claude Code, a
 After `--install-hook`, every Claude Code session gets two hooks that run silently in the background:
 
 1. **Cost hook** — tracks your running cost after every tool use. Shows a status line every 10 turns. Alerts when you cross $10/$25/$50/$100. At 80 turns or $30, auto-saves your session state to `.claude/checkpoint.md`.
-2. **Resume hook** — when you start a new session, detects the checkpoint and restores context automatically. One-shot: fires once, then gets out of the way.
+2. **Resume hook** — when you start a new session, detects the checkpoint and alerts you with last session stats. Claude can then read `checkpoint.md` to restore context. One-shot: fires once, then gets out of the way.
 
 Your daily workflow:
 ```
-Open Claude Code → checkpoint detected? context restored automatically
+Open Claude Code → checkpoint detected? stats shown, Claude reads checkpoint.md
        ↓
 Work normally → cost hook tracks silently in background
        ↓
