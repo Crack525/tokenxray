@@ -102,6 +102,7 @@ Customize hook thresholds in `~/.tokenxray/config.json`:
     "split_cost": 5,
     "alert_thresholds": [1, 3, 5, 10, 25, 50],
     "status_interval": 10,
+       "debug_log": false,
     "hard_stop": false,
     "hard_stop_turns": 120,
     "hard_stop_cost": 50,
@@ -110,6 +111,22 @@ Customize hook thresholds in `~/.tokenxray/config.json`:
     "opus_nudge_cost": 5.0
 }
 ```
+
+## Debugging Hooks
+
+By default, hooks only print user-facing messages in conversation. If you need deeper diagnostics, enable internal hook logging:
+
+```json
+{"debug_log": true}
+```
+
+This writes hook events to `~/.tokenxray/debug.log` (cost/resume/subagent hooks). Useful when a warning seems missing and you want to verify whether the hook fired, skipped, or hit an exception-safe path.
+
+```bash
+tail -f ~/.tokenxray/debug.log
+```
+
+Set `"debug_log": false` when done.
 
 ## Supported Tools
 
