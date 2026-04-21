@@ -7,6 +7,7 @@ from tokenxray.colors import C
 from tokenxray.config import DATA_DIR, HOOK_SCRIPT, SETTINGS_FILE
 
 RESUME_HOOK_SCRIPT = DATA_DIR / "resume_hook.py"
+SUBAGENT_HOOK_SCRIPT = DATA_DIR / "subagent_hook.py"
 
 HOOK_CODE = '''#!/usr/bin/env python3
 """TokenXRay live cost hook — surfaces session cost + auto-checkpoint.
@@ -31,6 +32,7 @@ COST_LOG = Path.home() / ".tokenxray" / "live_session.json"
 CONFIG_FILE = Path.home() / ".tokenxray" / "config.json"
 PROJECTS_DIR = Path.home() / ".claude" / "projects"
 SETTINGS_FILE = Path.home() / ".claude" / "settings.json"
+DEBUG_LOG = Path.home() / ".tokenxray" / "debug.log"
 
 # Defaults — override via ~/.tokenxray/config.json
 DEFAULT_CONFIG = {
@@ -38,6 +40,7 @@ DEFAULT_CONFIG = {
     "split_cost": 5,
     "alert_thresholds": [1, 3, 5, 10, 25, 50],
     "status_interval": 10,
+    "debug_log": False,
     "hard_stop": False,
     "hard_stop_turns": 120,
     "hard_stop_cost": 50,
@@ -79,6 +82,19 @@ def get_current_model():
     except (FileNotFoundError, json.JSONDecodeError):
         model = ""
     return get_pricing(model)["label"]
+
+
+def write_debug(message, enabled=False):
+    """Append diagnostics to ~/.tokenxray/debug.log when enabled."""
+    if not enabled:
+        return
+    try:
+        DEBUG_LOG.parent.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        with open(DEBUG_LOG, "a") as f:
+            f.write(f"[{ts}] cost_hook: {message}\\n")
+    except Exception:
+        pass
 
 
 def extract_checkpoint(jsonl_path):
@@ -246,10 +262,13 @@ def main():
         return
 
     cfg = load_config()
+    debug_enabled = cfg.get("debug_log", False)
+    write_debug("invoked", debug_enabled)
 
     session_id = data.get("session_id", "unknown")
     jsonl_files = glob.glob(str(PROJECTS_DIR / "**" / f"{session_id}.jsonl"), recursive=True)
     if not jsonl_files:
+        write_debug("no matching jsonl file found", debug_enabled)
         return
 
     total_cost = 0.0
@@ -343,6 +362,7 @@ def main():
                 f"Disable with: hard_stop=false in ~/.tokenxray/config.json\\033[0m",
                 file=sys.stdout,
             )
+            write_debug(f"hard_stop triggered: {reason}", debug_enabled)
             sys.exit(2)
 
     # ─── Cost threshold alerts (fire even without new turn) ──────────────
@@ -359,6 +379,7 @@ def main():
                 f"ctx {ctx_str}, ~${cost_per_turn:.2f}/turn\\033[0m",
                 file=sys.stdout,
             )
+            write_debug(f"threshold alert fired at ${t}", debug_enabled)
             return
 
     # Below here, only act on new turns to avoid duplicates
@@ -413,6 +434,7 @@ def main():
                 f"\\033[2m[TokenXRay] Start a fresh session \\u2014 your context will be restored automatically.\\033[0m",
                 file=sys.stdout,
             )
+            write_debug("split warning shown and checkpoint saved", debug_enabled)
         except Exception:
             # Still show the split warning even if checkpoint fails
             print(
@@ -421,6 +443,7 @@ def main():
                 f"\\u2014 marathon sessions burn 92% of budget\\033[0m",
                 file=sys.stdout,
             )
+            write_debug("split warning shown but checkpoint save failed", debug_enabled)
 
     # ─── Cost status every N turns — stdout so Claude sees it ─────────
     past_threshold = len(tracker["alerts"]) > 0
@@ -431,6 +454,7 @@ def main():
             f"ctx {ctx_str}\\033[0m",
             file=sys.stdout,
         )
+        write_debug("status line emitted", debug_enabled)
 
 if __name__ == "__main__":
     main()
@@ -457,6 +481,31 @@ from datetime import datetime, timezone
 
 COST_LOG = Path.home() / ".tokenxray" / "live_session.json"
 SUMMARY_SHOWN = Path.home() / ".tokenxray" / ".last_summary_session"
+CONFIG_FILE = Path.home() / ".tokenxray" / "config.json"
+DEBUG_LOG = Path.home() / ".tokenxray" / "debug.log"
+
+
+def load_config():
+    cfg = {"debug_log": False}
+    try:
+        with open(CONFIG_FILE) as f:
+            user = json.load(f)
+        cfg.update(user)
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    return cfg
+
+
+def write_debug(message, enabled=False):
+    if not enabled:
+        return
+    try:
+        DEBUG_LOG.parent.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        with open(DEBUG_LOG, "a") as f:
+            f.write(f"[{ts}] resume_hook: {message}\\n")
+    except Exception:
+        pass
 
 
 def show_last_session_summary():
@@ -549,8 +598,149 @@ def check_checkpoint():
 
 
 def main():
+    cfg = load_config()
+    debug_enabled = cfg.get("debug_log", False)
+    write_debug("invoked", debug_enabled)
     show_last_session_summary()
     check_checkpoint()
+
+if __name__ == "__main__":
+    main()
+'''
+
+
+SUBAGENT_HOOK_CODE = '''#!/usr/bin/env python3
+"""TokenXRay subagent hook — warns on Agent tool calls.
+
+Runs as a PreToolUse hook, matcher: Agent.
+Fires before each Agent tool invocation:
+1. Shows a full warning on the first Agent call in the session.
+2. Shows a brief reminder every subagent_warn_interval calls after that.
+3. Never blocks — non-blocking, informational only.
+"""
+import json
+import sys
+from pathlib import Path
+
+COST_LOG = Path.home() / ".tokenxray" / "live_session.json"
+CONFIG_FILE = Path.home() / ".tokenxray" / "config.json"
+
+DEFAULT_CONFIG = {
+    "subagent_warn": True,
+    "subagent_warn_interval": 5,
+    "debug_log": False,
+}
+
+DEBUG_LOG = Path.home() / ".tokenxray" / "debug.log"
+
+
+def load_config():
+    cfg = dict(DEFAULT_CONFIG)
+    try:
+        with open(CONFIG_FILE) as f:
+            user = json.load(f)
+        cfg.update(user)
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    return cfg
+
+
+def write_debug(message, enabled=False):
+    if not enabled:
+        return
+    try:
+        DEBUG_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with open(DEBUG_LOG, "a") as f:
+            f.write(f"subagent_hook: {message}\\n")
+    except Exception:
+        pass
+
+
+def load_state(session_id):
+    """Return live_session.json contents, or None if missing/stale."""
+    try:
+        with open(COST_LOG) as f:
+            state = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+    if state.get("session_id") != session_id:
+        return None
+    return state
+
+
+def save_state(session_id, updates):
+    """Read-merge-write: preserves all existing keys, silent on failure."""
+    try:
+        try:
+            with open(COST_LOG) as f:
+                existing = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            existing = {}
+        # Guard: don\\'t merge into a stale session
+        if existing.get("session_id") != session_id:
+            return
+        existing.update(updates)
+        COST_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with open(COST_LOG, "w") as f:
+            json.dump(existing, f)
+    except Exception:
+        pass
+
+
+def main():
+    try:
+        data = json.load(sys.stdin)
+    except (json.JSONDecodeError, EOFError):
+        return
+
+    # Flexible tool name matching — handle varying field names across clients
+    tool_name = data.get("tool_name", "") or data.get("toolName", "") or ""
+    if "agent" not in tool_name.lower():
+        return
+
+    session_id = data.get("session_id", "") or data.get("sessionId", "") or ""
+    if not session_id:
+        return
+
+    cfg = load_config()
+    debug_enabled = cfg.get("debug_log", False)
+    write_debug("invoked", debug_enabled)
+    if not cfg.get("subagent_warn", True):
+        write_debug("subagent_warn disabled", debug_enabled)
+        return
+
+    state = load_state(session_id)
+    if state is None:
+        write_debug("no live state for session", debug_enabled)
+        return
+
+    call_count = state.get("subagent_calls", 0) + 1
+    save_state(session_id, {"subagent_calls": call_count})
+    write_debug(f"subagent call_count={call_count}", debug_enabled)
+
+    total_cost = state.get("total_cost", 0.0)
+    turn_count = state.get("turns", 0)
+    model = state.get("model", "unknown")
+    cost_per_turn = total_cost / turn_count if turn_count > 0 else 0.0
+
+    interval = cfg.get("subagent_warn_interval", 5)
+
+    if call_count == 1:
+        print(
+            f"\\n\\033[1m\\033[33m[TokenXRay] Agent call — subagents spawn a full context "
+            f"and cost significantly more per task.\\033[0m\\n"
+            f"\\033[2m[TokenXRay] Session: {turn_count} turns, ${total_cost:.2f} so far "
+            f"(~${cost_per_turn:.2f}/turn), {model}\\033[0m\\n"
+            f"\\033[2m[TokenXRay] Disable: set subagent_warn=false in ~/.tokenxray/config.json\\033[0m",
+            file=sys.stdout,
+        )
+    elif interval > 0 and call_count % interval == 0:
+        print(
+            f"\\033[2m[TokenXRay] Agent call #{call_count} this session — "
+            f"${total_cost:.2f} total so far.\\033[0m",
+            file=sys.stdout,
+        )
+
 
 if __name__ == "__main__":
     main()
@@ -570,6 +760,11 @@ def run(args):
         f.write(RESUME_HOOK_CODE)
     os.chmod(RESUME_HOOK_SCRIPT, 0o755)
 
+    # Write the subagent hook script
+    with open(SUBAGENT_HOOK_SCRIPT, "w") as f:
+        f.write(SUBAGENT_HOOK_CODE)
+    os.chmod(SUBAGENT_HOOK_SCRIPT, 0o755)
+
     # Check if already installed
     settings = {}
     if SETTINGS_FILE.exists():
@@ -582,6 +777,7 @@ def run(args):
     hooks = settings.get("hooks", {})
     post_tool = hooks.get("PostToolUse", [])
     user_prompt = hooks.get("UserPromptSubmit", [])
+    pre_tool = hooks.get("PreToolUse", [])
 
     cost_hook_installed = any(
         str(HOOK_SCRIPT) in str(h.get("hooks", []))
@@ -591,8 +787,12 @@ def run(args):
         str(RESUME_HOOK_SCRIPT) in str(h.get("hooks", []))
         for h in user_prompt if isinstance(h, dict)
     )
+    subagent_hook_installed = any(
+        str(SUBAGENT_HOOK_SCRIPT) in str(h.get("hooks", []))
+        for h in pre_tool if isinstance(h, dict)
+    )
 
-    both_installed = cost_hook_installed and resume_hook_installed
+    both_installed = cost_hook_installed and resume_hook_installed and subagent_hook_installed
 
     if both_installed:
         print(f"{C.GREEN}Hooks already installed! Scripts updated at {DATA_DIR}{C.RESET}")
@@ -601,9 +801,10 @@ def run(args):
     print()
     print(f"{C.BOLD}{C.CYAN}TokenXRay — Install Live Cost + Auto-Checkpoint Hooks{C.RESET}")
     print(f"{C.DIM}{'─' * 70}{C.RESET}")
-    print(f"  Cost hook:   {HOOK_SCRIPT}")
-    print(f"  Resume hook: {RESUME_HOOK_SCRIPT}")
-    print(f"  Tracks cost, auto-checkpoints at 80 turns/$30, auto-resumes next session")
+    print(f"  Cost hook:     {HOOK_SCRIPT}")
+    print(f"  Resume hook:   {RESUME_HOOK_SCRIPT}")
+    print(f"  Subagent hook: {SUBAGENT_HOOK_SCRIPT}")
+    print(f"  Tracks cost, auto-checkpoints at split threshold, warns on Agent calls")
     print()
 
     if getattr(args, "confirm", False):
@@ -626,6 +827,16 @@ def run(args):
                 user_prompt = []
             user_prompt.append(resume_entry)
             hooks["UserPromptSubmit"] = user_prompt
+
+        if not subagent_hook_installed:
+            subagent_entry = {
+                "matcher": "Agent",
+                "hooks": [{"type": "command", "command": f"python3 {SUBAGENT_HOOK_SCRIPT}"}],
+            }
+            if not isinstance(pre_tool, list):
+                pre_tool = []
+            pre_tool.append(subagent_entry)
+            hooks["PreToolUse"] = pre_tool
 
         settings["hooks"] = hooks
 
