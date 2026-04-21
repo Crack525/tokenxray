@@ -1,3 +1,7 @@
 """TokenXRay — See where your AI coding tokens actually go."""
 
-__version__ = "0.3.2"
+try:
+    from importlib.metadata import version
+    __version__ = version("tokenxray")
+except Exception:
+    __version__ = "unknown"
