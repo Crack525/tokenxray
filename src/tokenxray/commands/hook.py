@@ -34,9 +34,9 @@ SETTINGS_FILE = Path.home() / ".claude" / "settings.json"
 
 # Defaults — override via ~/.tokenxray/config.json
 DEFAULT_CONFIG = {
-    "split_turns": 80,
-    "split_cost": 30,
-    "alert_thresholds": [10, 25, 50, 100, 200, 500],
+    "split_turns": 60,
+    "split_cost": 5,
+    "alert_thresholds": [1, 3, 5, 10, 25, 50],
     "status_interval": 10,
     "hard_stop": False,
     "hard_stop_turns": 120,
@@ -400,14 +400,14 @@ def main():
                 file=sys.stdout,
             )
 
-    # ─── Cost status on every turn once past any threshold ──────────────
+    # ─── Cost status every N turns — stdout so Claude sees it ─────────
     past_threshold = len(tracker["alerts"]) > 0
     if past_threshold or turn_count % cfg["status_interval"] == 0:
         print(
             f"\\033[2m[TokenXRay] {model_label} \\u2014 turn {turn_count}, "
             f"${total_cost:.2f} total, ~${cost_per_turn:.2f}/turn, "
             f"ctx {ctx_str}\\033[0m",
-            file=sys.stderr,
+            file=sys.stdout,
         )
 
 if __name__ == "__main__":
