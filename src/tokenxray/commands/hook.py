@@ -324,11 +324,16 @@ def main():
         stop_cost = cfg.get("hard_stop_cost", 50)
         if turn_count >= stop_turns or total_cost >= stop_cost:
             reason = f"turn limit ({turn_count}/{stop_turns})" if turn_count >= stop_turns else f"cost limit (${total_cost:.2f}/${stop_cost})"
+            checkpoint_note = (
+                "Checkpoint was auto-saved earlier."
+                if prev_split_warned
+                else "Run: tokenxray --checkpoint to save your work before closing."
+            )
             print(
                 f"\\n\\033[1m\\033[31m[TokenXRay] HARD STOP \\u2014 {reason} reached. "
                 f"Session blocked.\\033[0m\\n"
                 f"\\033[1mPlease wrap up and start a fresh session.\\033[0m\\n"
-                f"\\033[2mCheckpoint was auto-saved earlier. "
+                f"\\033[2m{checkpoint_note} "
                 f"Disable with: hard_stop=false in ~/.tokenxray/config.json\\033[0m",
                 file=sys.stdout,
             )

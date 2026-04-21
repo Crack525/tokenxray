@@ -93,4 +93,19 @@ def run(args):
 
     print()
     print(f"  {C.DIM}Deep dive: tokenxray --session <id>{C.RESET}")
+
+    # Nudge first-time users to install hooks if not yet configured
+    from tokenxray.config import SETTINGS_FILE
+    hooks_installed = False
+    try:
+        import json as _json
+        with open(SETTINGS_FILE) as _f:
+            hooks_installed = bool(_json.load(_f).get("hooks"))
+    except (FileNotFoundError, Exception):
+        pass
+    if not hooks_installed:
+        print(
+            f"  {C.DIM}Tip: run {C.RESET}{C.BOLD}tokenxray --install-hook --confirm"
+            f"{C.RESET}{C.DIM} to enable live cost tracking + auto-checkpoint.{C.RESET}"
+        )
     print()

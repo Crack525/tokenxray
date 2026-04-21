@@ -250,10 +250,15 @@ def run(args):
     ctx_str = f"{last_ctx/1000:.0f}K" if last_ctx < 1e6 else f"{last_ctx/1e6:.1f}M"
     checkpoint["context_size"] = ctx_str
 
-    # Write checkpoint
+    # Write checkpoint — fall back to cwd if session cwd is inaccessible
     cwd = checkpoint.get("cwd") or os.getcwd()
     checkpoint_path = Path(cwd) / ".claude" / "checkpoint.md"
-    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+    except (PermissionError, OSError):
+        checkpoint_path = Path(os.getcwd()) / ".claude" / "checkpoint.md"
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"  {C.YELLOW}Note: original cwd inaccessible, saving to current directory.{C.RESET}")
     checkpoint_path.write_text(format_checkpoint(checkpoint))
 
     print(f"  {C.GREEN}{C.BOLD}Checkpoint saved to {checkpoint_path}{C.RESET}")
