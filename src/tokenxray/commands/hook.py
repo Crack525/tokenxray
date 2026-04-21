@@ -41,6 +41,9 @@ DEFAULT_CONFIG = {
     "hard_stop": False,
     "hard_stop_turns": 120,
     "hard_stop_cost": 50,
+    "opus_nudge": True,
+    "opus_nudge_turn": 20,
+    "opus_nudge_cost": 5.0,
 }
 
 def load_config():
@@ -288,6 +291,7 @@ def main():
     prev_turns = 0
     prev_alerts = []
     prev_split_warned = False
+    prev_opus_nudge_shown = False
     if COST_LOG.exists():
         try:
             with open(COST_LOG) as f:
@@ -296,6 +300,7 @@ def main():
                 prev_turns = prev.get("turns", 0)
                 prev_alerts = prev.get("alerts", [])
                 prev_split_warned = prev.get("split_warned", False)
+                prev_opus_nudge_shown = prev.get("opus_nudge_shown", False)
         except (json.JSONDecodeError, KeyError):
             pass
 
@@ -307,6 +312,7 @@ def main():
         "context_size": last_ctx,
         "model": get_current_model(),
         "split_warned": prev_split_warned,
+        "opus_nudge_shown": prev_opus_nudge_shown,
     }
     COST_LOG.parent.mkdir(parents=True, exist_ok=True)
     with open(COST_LOG, "w") as f:
@@ -358,6 +364,22 @@ def main():
     # Below here, only act on new turns to avoid duplicates
     if not new_turn:
         return
+
+    # ─── Opus nudge (once per session) ──────────────────────────────────
+    if cfg.get("opus_nudge", True) and not tracker.get("opus_nudge_shown"):
+        nudge_turn = cfg.get("opus_nudge_turn", 20)
+        nudge_cost = cfg.get("opus_nudge_cost", 5.0)
+        if "opus" in last_model.lower() and (turn_count >= nudge_turn or total_cost >= nudge_cost):
+            tracker["opus_nudge_shown"] = True
+            with open(COST_LOG, "w") as f:
+                json.dump(tracker, f)
+            print(
+                f"\\n\\033[1m\\033[35m[TokenXRay] You\\'re on Opus ($15/MTok input) \\u2014 "
+                f"Sonnet costs 5x less and handles most coding tasks well.\\033[0m\\n"
+                f"\\033[1m\\033[35mConsider switching: /model claude-sonnet-4-6\\033[0m\\n"
+                f"\\033[2m[TokenXRay] Disable: set opus_nudge=false in ~/.tokenxray/config.json\\033[0m",
+                file=sys.stdout,
+            )
 
     # ─── Split session warning + auto-checkpoint ────────────────────────
     if not tracker.get("split_warned") and (turn_count > cfg["split_turns"] or total_cost >= cfg["split_cost"]):
