@@ -71,6 +71,7 @@ tokenxray --diagnose       # Specific recommendations
 tokenxray --session <id>   # Deep dive into one session
 tokenxray --dashboard      # Interactive HTML charts
 tokenxray --projects       # Cost by project
+tokenxray --mcp            # MCP tool audit — find dead-weight servers
 ```
 
 ```
@@ -130,6 +131,19 @@ tokenxray --source all       # Everything (default)
 | `--baseline` / `--compare` | Save baseline, compare after changing habits |
 | `--export csv` | Export sessions to CSV |
 | `--checkpoint` | Manually extract session state |
+| `--mcp` | MCP tool audit — dead-weight servers, unused tools, schema cost estimate |
+| `--mcp --enumerate-tools` | Spawn each configured MCP server and get exact tool counts |
+
+## MCP Tool Audit
+
+Every MCP server you configure globally loads its full tool schema into Claude's context on every session start — roughly **185 tokens per tool**. At 84 tools across a few servers, that's ~15K tokens per session, silently added even when you never call a single MCP tool.
+
+```bash
+tokenxray --mcp                   # Audit from call history
+tokenxray --mcp --enumerate-tools # Also spawn servers to get exact tool counts
+```
+
+Output shows per-server call rates, never-called tools, and a dead-weight estimate: sessions that loaded schemas but called zero MCP tools. The fix is usually moving from global `~/.claude.json` config to project-level `.mcp.json` so servers only load where you actually use them.
 
 ## The Full Story
 
