@@ -29,16 +29,18 @@ TokenXRay has two layers: **hooks** that run automatically inside Claude Code, a
 
 After `--install-hook`, every Claude Code session gets two hooks that run silently in the background:
 
-1. **Cost hook** — tracks your running cost after every tool use. Shows a status line every 10 turns. Alerts when you cross $10/$25/$50/$100. At 80 turns or $30, auto-saves your session state to `.claude/checkpoint.md`.
-2. **Resume hook** — when you start a new session, detects the checkpoint and alerts you with last session stats. Claude can then read `checkpoint.md` to restore context. One-shot: fires once, then gets out of the way.
+1. **Cost hook** — tracks your running cost after every tool use. Shows a status line every 10 turns. Alerts when you cross $1/$3/$5/$10/$25/$50. At 60 turns or $5, auto-saves your session state to `.claude/checkpoint.md`. If you're on Opus, nudges you once to consider switching to Sonnet (5x cheaper for most tasks).
+2. **Resume hook** — when you start a new session, detects the checkpoint and prints last session stats + the checkpoint path. **Claude does not read the checkpoint automatically** — tell it to: *"read .claude/checkpoint.md.loaded"*. One-shot: fires once per session, then gets out of the way.
 
 Your daily workflow:
 ```
-Open Claude Code → checkpoint detected? stats shown, Claude reads checkpoint.md
+Open Claude Code → checkpoint detected? stats shown in conversation
+       ↓
+Tell Claude: "read .claude/checkpoint.md.loaded" → context restored
        ↓
 Work normally → cost hook tracks silently in background
        ↓
-Hit 80 turns or $30 → checkpoint auto-saved
+Hit 60 turns or $5 → checkpoint auto-saved
        ↓
 You decide: keep going or start fresh (checkpoint is saved either way)
        ↓
@@ -49,7 +51,9 @@ You never run `tokenxray` during a session. The hooks handle it.
 
 ```
 [TokenXRay] Opus — turn 40, $12.50 total, ~$0.31/turn, ctx 85K
-[TokenXRay] Consider splitting this session! (80 turns, $31.20, ctx 120K)
+[TokenXRay] You're on Opus ($15/MTok input) — Sonnet costs 5x less and handles most coding tasks well.
+[TokenXRay] Consider switching: /model claude-sonnet-4-6
+[TokenXRay] Consider splitting this session! (60 turns, $5.20, ctx 90K)
 [TokenXRay] Auto-checkpoint saved to .claude/checkpoint.md
 ```
 
@@ -94,13 +98,16 @@ Customize hook thresholds in `~/.tokenxray/config.json`:
 
 ```json
 {
-    "split_turns": 80,
-    "split_cost": 30,
-    "alert_thresholds": [10, 25, 50, 100, 200, 500],
+    "split_turns": 60,
+    "split_cost": 5,
+    "alert_thresholds": [1, 3, 5, 10, 25, 50],
     "status_interval": 10,
     "hard_stop": false,
     "hard_stop_turns": 120,
-    "hard_stop_cost": 50
+    "hard_stop_cost": 50,
+    "opus_nudge": true,
+    "opus_nudge_turn": 20,
+    "opus_nudge_cost": 5.0
 }
 ```
 
