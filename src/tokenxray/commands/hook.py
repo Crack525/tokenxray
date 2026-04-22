@@ -584,16 +584,21 @@ def check_checkpoint():
     """
     GLOBAL_CHECKPOINT = Path.home() / ".tokenxray" / "checkpoint.md"
 
-    # Prefer project-local; fall back to global
+    # Prefer project-local only if it's newer than (or global doesn't exist)
+    # This prevents a stale local file from shadowing a fresh global checkpoint
     local = Path.cwd() / ".claude" / "checkpoint.md"
-    if local.exists():
+    local_mtime = local.stat().st_mtime if local.exists() else 0
+    global_mtime = GLOBAL_CHECKPOINT.stat().st_mtime if GLOBAL_CHECKPOINT.exists() else 0
+
+    if local_mtime == 0 and global_mtime == 0:
+        return
+
+    if local_mtime >= global_mtime:
         checkpoint = local
         is_global = False
-    elif GLOBAL_CHECKPOINT.exists():
+    else:
         checkpoint = GLOBAL_CHECKPOINT
         is_global = True
-    else:
-        return
 
     # Only load if recent (< 48 hours)
     try:
