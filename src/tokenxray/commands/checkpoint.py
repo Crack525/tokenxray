@@ -6,7 +6,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from tokenxray.colors import C
-from tokenxray.config import CLAUDE_PROJECTS_DIR
+from tokenxray.config import CLAUDE_PROJECTS_DIR, DATA_DIR
+
+GLOBAL_CHECKPOINT = DATA_DIR / "checkpoint.md"
 
 
 def extract_checkpoint(jsonl_path):
@@ -47,6 +49,13 @@ def extract_checkpoint(jsonl_path):
                 if isinstance(content, str) and len(content) > 10:
                     if not content.startswith("<") and "tool_result" not in content:
                         user_messages.append(content[:500])
+                elif isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            text = block.get("text", "")
+                            if len(text) > 10 and not text.startswith("<"):
+                                user_messages.append(text[:500])
+                                break
 
             elif entry_type == "assistant":
                 msg = entry.get("message", {})
@@ -259,7 +268,16 @@ def run(args):
         checkpoint_path = Path(os.getcwd()) / ".claude" / "checkpoint.md"
         checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"  {C.YELLOW}Note: original cwd inaccessible, saving to current directory.{C.RESET}")
-    checkpoint_path.write_text(format_checkpoint(checkpoint))
+
+    content = format_checkpoint(checkpoint)
+    checkpoint_path.write_text(content)
+
+    # Also write to global location so resume hook finds it from any directory
+    try:
+        GLOBAL_CHECKPOINT.parent.mkdir(parents=True, exist_ok=True)
+        GLOBAL_CHECKPOINT.write_text(content)
+    except OSError:
+        pass
 
     print(f"  {C.GREEN}{C.BOLD}Checkpoint saved to {checkpoint_path}{C.RESET}")
     print(f"  {turn_count} turns | ${total_cost:.2f} | {len(checkpoint.get('files_edited', []))} files modified")

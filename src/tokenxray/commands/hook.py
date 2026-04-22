@@ -131,6 +131,13 @@ def extract_checkpoint(jsonl_path):
                     if isinstance(content, str) and len(content) > 10:
                         if not content.startswith("<") and "tool_result" not in content:
                             user_messages.append(content[:500])
+                    elif isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict) and block.get("type") == "text":
+                                text = block.get("text", "")
+                                if len(text) > 10 and not text.startswith("<"):
+                                    user_messages.append(text[:500])
+                                    break
 
                 elif entry_type == "assistant":
                     msg = entry.get("message", {})
@@ -418,7 +425,15 @@ def main():
 
             cp_path = Path(cp.get("cwd") or ".") / ".claude" / "checkpoint.md"
             cp_path.parent.mkdir(parents=True, exist_ok=True)
-            cp_path.write_text(format_checkpoint(cp))
+            cp_content = format_checkpoint(cp)
+            cp_path.write_text(cp_content)
+            # Also write global so resume hook finds it from any directory
+            global_cp = Path.home() / ".tokenxray" / "checkpoint.md"
+            try:
+                global_cp.parent.mkdir(parents=True, exist_ok=True)
+                global_cp.write_text(cp_content)
+            except OSError:
+                pass
 
             print(
                 f"\\n\\033[1m\\033[31m[TokenXRay] Consider splitting this session! "
@@ -561,9 +576,23 @@ def show_last_session_summary():
 
 
 def check_checkpoint():
-    """Load checkpoint if recent and not already loaded."""
-    checkpoint = Path.cwd() / ".claude" / "checkpoint.md"
-    if not checkpoint.exists():
+    """Load checkpoint if recent and not already loaded.
+
+    Checks two locations in priority order:
+    1. Project-local: .claude/checkpoint.md (same directory as new session)
+    2. Global fallback: ~/.tokenxray/checkpoint.md (written by --checkpoint from any session)
+    """
+    GLOBAL_CHECKPOINT = Path.home() / ".tokenxray" / "checkpoint.md"
+
+    # Prefer project-local; fall back to global
+    local = Path.cwd() / ".claude" / "checkpoint.md"
+    if local.exists():
+        checkpoint = local
+        is_global = False
+    elif GLOBAL_CHECKPOINT.exists():
+        checkpoint = GLOBAL_CHECKPOINT
+        is_global = True
+    else:
         return
 
     # Only load if recent (< 48 hours)
@@ -583,12 +612,13 @@ def check_checkpoint():
         pass
 
     age_label = f"{age_hours:.0f}h" if age_hours >= 1 else f"{age_hours * 60:.0f}m"
+    read_path = str(loaded) if is_global else ".claude/checkpoint.md.loaded"
     print(
         f"\\n[TokenXRay] Previous session checkpoint found ({age_label} ago).",
         file=sys.stdout,
     )
     print(
-        f"Read .claude/checkpoint.md.loaded to continue where the last session left off.",
+        f"Read {read_path} to continue where the last session left off.",
         file=sys.stdout,
     )
     print(
