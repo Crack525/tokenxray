@@ -752,13 +752,15 @@ STATUSLINE_CODE = '''#!/usr/bin/env python3
 
 Receives native Claude Code JSON via stdin (cost, context, model, rate limits).
 Enriches with tokenxray data from live_session.json (turns, velocity).
-Outputs a colored one-liner visible at the bottom of the terminal every turn.
+When a trigger fires, replaces normal metrics with a focused action line.
+Otherwise shows full metrics at the bottom of the terminal every turn.
 """
 import json
 import sys
 from pathlib import Path
 
 LIVE_SESSION = Path.home() / ".tokenxray" / "live_session.json"
+CONFIG_FILE = Path.home() / ".tokenxray" / "config.json"
 
 
 def color(text, code):
@@ -801,6 +803,41 @@ def velocity_indicator(cost, turns):
         return "\\U0001f525"
 
 
+def load_config():
+    try:
+        with open(CONFIG_FILE) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def get_hint(model_name, total_cost, ctx_pct, turns, rate_data):
+    """Return (hint_text, ansi_code) for the highest-priority action, or None."""
+    # P1: rate limit critical
+    if rate_data:
+        remaining = rate_data.get("requests_remaining")
+        if remaining is not None and remaining < 3:
+            return (f"\\u26a0 {remaining} req left \\u2014 pause or hit rate limit", "31;1")
+
+    # P2: context critical
+    if ctx_pct > 85:
+        return (f"\\U0001f525 ctx {ctx_pct:.0f}% \\u2014 split now or lose context", "31;1")
+
+    # P3: context warning
+    if ctx_pct > 60:
+        return (f"\\u26a0 ctx {ctx_pct:.0f}% \\u2014 split soon, saves ~60% tokens", "33;1")
+
+    # P4: Opus cost nudge
+    if model_name and "opus" in model_name.lower() and total_cost > 3:
+        return ("\\u2192 /model sonnet \\u2014 same task, 5x cheaper", "35")
+
+    # P5: marathon session
+    if turns > 80 and total_cost > 2:
+        return ("\\u2192 checkpoint & split \\u2014 marathon burns 4x", "33")
+
+    return None
+
+
 def main():
     try:
         native = json.load(sys.stdin)
@@ -825,10 +862,28 @@ def main():
     except (FileNotFoundError, json.JSONDecodeError):
         pass
 
+    cfg = load_config()
+    hints_enabled = cfg.get("statusline_hints", True)
+
+    hint = get_hint(model_name, total_cost, ctx_pct, turns, rate_data) if hints_enabled else None
+
+    if hint:
+        # Triggered: minimal metrics + action
+        hint_text, hint_code = hint
+        parts = []
+        short = model_name.split()[0] if model_name else ""
+        if short:
+            parts.append(color(short, "2"))
+        parts.append(color(f"${total_cost:.2f}", cost_color(total_cost)))
+        parts.append(color(f"ctx {ctx_pct:.0f}%", ctx_color(ctx_pct)))
+        parts.append(color(hint_text, hint_code))
+        print(" \\u2502 ".join(parts))
+        return
+
+    # Normal: full metrics
     parts = []
 
     if model_name:
-        # display_name is e.g. "Opus 4.6 (1M context)" — take first word
         short = model_name.split()[0] if model_name else ""
         if short:
             parts.append(color(short, "2"))
@@ -844,7 +899,6 @@ def main():
         parts.append(color(f"T{turns}", "2"))
         parts.append(color(f"~${total_cost / turns:.2f}/t", "2"))
 
-    # Always show context — this is the key health signal
     cc2 = ctx_color(ctx_pct)
     parts.append(color(f"ctx {ctx_pct:.0f}%", cc2))
     if ctx_pct > 20 and ctx_pct < 95 and turns > 5:

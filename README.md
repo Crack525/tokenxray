@@ -23,31 +23,71 @@ tokenxray --install-hook --confirm   # one-time setup, then forget about it
 
 ## How It Works
 
-TokenXRay has two layers: **hooks** that run automatically inside Claude Code, and a **CLI** you run when you want to review your spending.
+TokenXRay has three layers: a **status line** always visible at the bottom of Claude Code, **hooks** that run automatically, and a **CLI** you run when you want to review your spending.
+
+### Always-on: Status Line
+
+After `--install-hook`, a persistent status line appears at the bottom of every Claude Code session showing live session health:
+
+```
+Opus │ $5.60 │ ▸▸ │ T42 │ ~$0.13/t │ ctx 38% │ ~43 left │ 27m
+```
+
+| Field | Meaning |
+|-------|---------|
+| `Opus` | Current model |
+| `$5.60` | Total session cost (color-coded: green < $1, yellow < $5, red > $15) |
+| `▸▸` | Spend velocity — more arrows = burning faster per turn |
+| `T42` | Turn count |
+| `~$0.13/t` | Average cost per turn |
+| `ctx 38%` | Context window usage (color-coded: green < 50%, yellow < 75%, red > 90%) |
+| `~43 left` | Estimated turns remaining before context fills |
+| `27m` | Session duration |
+
+**Actionable hints** — when a trigger fires, the status line switches from full metrics to a focused action line:
+
+```
+Opus │ $5.60 │ ctx 87% │ 🔥 ctx 87% — split now or lose context
+```
+
+Hints are prioritized — only the highest-priority action shows:
+
+| Priority | Trigger | Hint |
+|----------|---------|------|
+| P1 | Rate limit < 3 requests left | `⚠ N req left — pause or hit rate limit` |
+| P2 | Context > 85% | `🔥 ctx X% — split now or lose context` |
+| P3 | Context > 60% | `⚠ ctx X% — split soon, saves ~60% tokens` |
+| P4 | Opus + cost > $3 | `→ /model sonnet — same task, 5x cheaper` |
+| P5 | 80+ turns + cost > $2 | `→ checkpoint & split — marathon burns 4x` |
+
+Disable hints (keep metrics): set `"statusline_hints": false` in `~/.tokenxray/config.json`.
 
 ### Daily: Hooks (automatic, zero effort)
 
-After `--install-hook`, every Claude Code session gets two hooks that run silently in the background:
+After `--install-hook`, every Claude Code session gets three hooks that run silently in the background:
 
 1. **Cost hook** — tracks your running cost after every tool use. Shows a status line every 10 turns. Alerts when you cross $1/$3/$5/$10/$25/$50. At 60 turns or $5, auto-saves your session state to `.claude/checkpoint.md`. If you're on Opus, nudges you once to consider switching to Sonnet (5x cheaper for most tasks).
 2. **Resume hook** — when you start a new session, detects the checkpoint and prints last session stats + the checkpoint path. **Claude does not read the checkpoint automatically** — tell it to: *"read .claude/checkpoint.md.loaded"*. One-shot: fires once per session, then gets out of the way.
+3. **Subagent hook** — fires before each `Agent` tool call. Full warning on first call per session, brief reminder every 5 calls. Agents spawn new context windows at full cost — this nudges you to consider whether delegation is worth it.
 
 Your daily workflow:
 ```
-Open Claude Code → checkpoint detected? stats shown in conversation
+Open Claude Code → status line shows live metrics at bottom
+       ↓
+Checkpoint detected? Stats shown in conversation
        ↓
 Tell Claude: "read .claude/checkpoint.md.loaded" → context restored
        ↓
-Work normally → cost hook tracks silently in background
+Work normally → cost hook + status line track silently
        ↓
 Hit 60 turns or $5 → checkpoint auto-saved
        ↓
-You decide: keep going or start fresh (checkpoint is saved either way)
+Status line hint fires? Take the action or keep going
        ↓
 Start fresh → next session picks up where you left off
 ```
 
-You never run `tokenxray` during a session. The hooks handle it.
+You never run `tokenxray` during a session. The hooks and status line handle it.
 
 ```
 [TokenXRay] Opus — turn 40, $12.50 total, ~$0.31/turn, ctx 85K
@@ -102,13 +142,16 @@ Customize hook thresholds in `~/.tokenxray/config.json`:
     "split_cost": 5,
     "alert_thresholds": [1, 3, 5, 10, 25, 50],
     "status_interval": 10,
-       "debug_log": false,
+    "debug_log": false,
     "hard_stop": false,
     "hard_stop_turns": 120,
     "hard_stop_cost": 50,
     "opus_nudge": true,
     "opus_nudge_turn": 20,
-    "opus_nudge_cost": 5.0
+    "opus_nudge_cost": 5.0,
+    "subagent_warn": true,
+    "subagent_warn_interval": 5,
+    "statusline_hints": true
 }
 ```
 
