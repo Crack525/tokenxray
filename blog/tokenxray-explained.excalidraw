@@ -880,7 +880,7 @@
       "y": 420.80082522175326,
       "width": 328.7349474261679,
       "height": 61.257676216088456,
-      "text": "3. AUTO-CHECKPOINT + HARD STOP\nAt 80 turns/$30: state saved automatically\nOpt-in: block tool calls past ceiling",
+      "text": "3. AUTO-CHECKPOINT + HARD STOP\nAt 60 turns/$5: state saved automatically\nOpt-in: block tool calls past ceiling",
       "fontSize": 14.293457783753974,
       "fontFamily": 1,
       "textAlign": "left",
@@ -908,7 +908,7 @@
       "roundness": null,
       "verticalAlign": "top",
       "containerId": null,
-      "originalText": "3. AUTO-CHECKPOINT + HARD STOP\nAt 80 turns/$30: state saved automatically\nOpt-in: block tool calls past ceiling",
+      "originalText": "3. AUTO-CHECKPOINT + HARD STOP\nAt 60 turns/$5: state saved automatically\nOpt-in: block tool calls past ceiling",
       "autoResize": true,
       "lineHeight": 1.4285714285714286
     },
@@ -1413,8 +1413,8 @@
       "x": 720,
       "y": 854,
       "width": 270,
-      "height": 150,
-      "text": "Zero-config, local-first\n\n+ Claude + Gemini + Copilot\n+ Session-level waste analysis\n+ Live cost tracking hooks\n+ Auto-checkpoint & resume\n+ Free forever, zero deps\n+ pip install tokenxray",
+      "height": 170,
+      "text": "Zero-config, local-first\n\n+ Claude + Gemini + Copilot\n+ Session-level waste analysis\n+ Live cost tracking hooks\n+ Auto-checkpoint + resume prompt\n+ Subagent real-time warnings\n+ Free forever, zero deps\n+ pip install tokenxray",
       "fontSize": 14,
       "fontFamily": 1,
       "textAlign": "left",
@@ -1440,7 +1440,7 @@
       "roundness": null,
       "verticalAlign": "top",
       "containerId": null,
-      "originalText": "Zero-config, local-first\n\n+ Claude + Gemini + Copilot\n+ Session-level waste analysis\n+ Live cost tracking hooks\n+ Auto-checkpoint & resume\n+ Free forever, zero deps\n+ pip install tokenxray",
+      "originalText": "Zero-config, local-first\n\n+ Claude + Gemini + Copilot\n+ Session-level waste analysis\n+ Live cost tracking hooks\n+ Auto-checkpoint + resume prompt\n+ Subagent real-time warnings\n+ Free forever, zero deps\n+ pip install tokenxray",
       "autoResize": true,
       "lineHeight": 1.3392857142857142
     }

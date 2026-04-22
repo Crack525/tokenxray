@@ -4,7 +4,7 @@ import json
 import os
 
 from tokenxray.colors import C
-from tokenxray.config import DATA_DIR, HOOK_SCRIPT, SETTINGS_FILE
+from tokenxray.config import DATA_DIR, HOOK_SCRIPT, STATUSLINE_SCRIPT, SETTINGS_FILE
 
 RESUME_HOOK_SCRIPT = DATA_DIR / "resume_hook.py"
 SUBAGENT_HOOK_SCRIPT = DATA_DIR / "subagent_hook.py"
@@ -747,68 +747,204 @@ if __name__ == "__main__":
 '''
 
 
-def run(args):
+STATUSLINE_CODE = '''#!/usr/bin/env python3
+"""TokenXRay status line — persistent session health in Claude Code UI.
+
+Receives native Claude Code JSON via stdin (cost, context, model, rate limits).
+Enriches with tokenxray data from live_session.json (turns, velocity).
+Outputs a colored one-liner visible at the bottom of the terminal every turn.
+"""
+import json
+import sys
+from pathlib import Path
+
+LIVE_SESSION = Path.home() / ".tokenxray" / "live_session.json"
+
+
+def color(text, code):
+    return f"\\033[{code}m{text}\\033[0m"
+
+
+def cost_color(cost):
+    if cost < 1:
+        return "32"
+    elif cost < 5:
+        return "33"
+    elif cost < 15:
+        return "33;1"
+    else:
+        return "31;1"
+
+
+def ctx_color(pct):
+    if pct < 50:
+        return "32"
+    elif pct < 75:
+        return "33"
+    elif pct < 90:
+        return "33;1"
+    else:
+        return "31;1"
+
+
+def velocity_indicator(cost, turns):
+    if turns == 0:
+        return ""
+    cpt = cost / turns
+    if cpt < 0.05:
+        return "\\u25b8"
+    elif cpt < 0.15:
+        return "\\u25b8\\u25b8"
+    elif cpt < 0.40:
+        return "\\u25b8\\u25b8\\u25b8"
+    else:
+        return "\\U0001f525"
+
+
+def main():
+    try:
+        native = json.load(sys.stdin)
+    except (json.JSONDecodeError, EOFError):
+        native = {}
+
+    cost_data = native.get("cost", {})
+    ctx_data = native.get("context_window", {})
+    model_data = native.get("model", {})
+    rate_data = native.get("rate_limits", {})
+
+    total_cost = cost_data.get("total_cost_usd", 0)
+    ctx_pct = ctx_data.get("used_percentage", 0)
+    model_name = model_data.get("display_name", "")
+    duration_ms = cost_data.get("total_duration_ms", 0)
+
+    turns = 0
+    try:
+        with open(LIVE_SESSION) as f:
+            tx = json.load(f)
+        turns = tx.get("turns", 0)
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+
+    parts = []
+
+    if model_name:
+        # display_name is e.g. "Opus 4.6 (1M context)" — take first word
+        short = model_name.split()[0] if model_name else ""
+        if short:
+            parts.append(color(short, "2"))
+
+    cc = cost_color(total_cost)
+    parts.append(color(f"${total_cost:.2f}", cc))
+
+    vel = velocity_indicator(total_cost, turns)
+    if vel:
+        parts.append(color(vel, cc))
+
+    if turns > 0:
+        parts.append(color(f"T{turns}", "2"))
+        parts.append(color(f"~${total_cost / turns:.2f}/t", "2"))
+
+    # Always show context — this is the key health signal
+    cc2 = ctx_color(ctx_pct)
+    parts.append(color(f"ctx {ctx_pct:.0f}%", cc2))
+    if ctx_pct > 20 and ctx_pct < 95 and turns > 5:
+        avg_per_turn = ctx_pct / turns if turns > 0 else 1.5
+        remaining = int((95 - ctx_pct) / avg_per_turn) if avg_per_turn > 0 else 0
+        if 0 < remaining < 200:
+            parts.append(color(f"~{remaining} left", cc2))
+
+    if duration_ms > 0:
+        mins = duration_ms / 60000
+        if mins >= 1:
+            parts.append(color(f"{mins:.0f}m", "2"))
+
+    if rate_data:
+        remaining = rate_data.get("requests_remaining")
+        if remaining is not None and remaining < 5:
+            parts.append(color(f"\\u26a0 {remaining} req left", "31;1"))
+
+    print(" \\u2502 ".join(parts))
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+
+def _write_scripts():
+    """Write all hook and statusline scripts to ~/.tokenxray/."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Write the cost hook script
-    with open(HOOK_SCRIPT, "w") as f:
-        f.write(HOOK_CODE)
-    os.chmod(HOOK_SCRIPT, 0o755)
+    for path, code in [
+        (HOOK_SCRIPT, HOOK_CODE),
+        (RESUME_HOOK_SCRIPT, RESUME_HOOK_CODE),
+        (SUBAGENT_HOOK_SCRIPT, SUBAGENT_HOOK_CODE),
+        (STATUSLINE_SCRIPT, STATUSLINE_CODE),
+    ]:
+        with open(path, "w") as f:
+            f.write(code)
+        os.chmod(path, 0o755)
 
-    # Write the resume hook script
-    with open(RESUME_HOOK_SCRIPT, "w") as f:
-        f.write(RESUME_HOOK_CODE)
-    os.chmod(RESUME_HOOK_SCRIPT, 0o755)
 
-    # Write the subagent hook script
-    with open(SUBAGENT_HOOK_SCRIPT, "w") as f:
-        f.write(SUBAGENT_HOOK_CODE)
-    os.chmod(SUBAGENT_HOOK_SCRIPT, 0o755)
-
-    # Check if already installed
-    settings = {}
+def _load_settings():
+    """Load ~/.claude/settings.json."""
     if SETTINGS_FILE.exists():
         try:
             with open(SETTINGS_FILE) as f:
-                settings = json.load(f)
+                return json.load(f)
         except json.JSONDecodeError:
             pass
+    return {}
 
+
+def _is_installed(entries, script_path):
+    """Check if a hook script is already registered."""
+    return any(
+        str(script_path) in str(h.get("hooks", []))
+        for h in entries if isinstance(h, dict)
+    )
+
+
+def _statusline_installed(settings):
+    """Check if statusline is already registered."""
+    sl = settings.get("statusLine", {})
+    return str(STATUSLINE_SCRIPT) in str(sl.get("command", ""))
+
+
+def run(args):
+    _write_scripts()
+
+    settings = _load_settings()
     hooks = settings.get("hooks", {})
     post_tool = hooks.get("PostToolUse", [])
     user_prompt = hooks.get("UserPromptSubmit", [])
     pre_tool = hooks.get("PreToolUse", [])
 
-    cost_hook_installed = any(
-        str(HOOK_SCRIPT) in str(h.get("hooks", []))
-        for h in post_tool if isinstance(h, dict)
-    )
-    resume_hook_installed = any(
-        str(RESUME_HOOK_SCRIPT) in str(h.get("hooks", []))
-        for h in user_prompt if isinstance(h, dict)
-    )
-    subagent_hook_installed = any(
-        str(SUBAGENT_HOOK_SCRIPT) in str(h.get("hooks", []))
-        for h in pre_tool if isinstance(h, dict)
-    )
+    cost_ok = _is_installed(post_tool, HOOK_SCRIPT)
+    resume_ok = _is_installed(user_prompt, RESUME_HOOK_SCRIPT)
+    subagent_ok = _is_installed(pre_tool, SUBAGENT_HOOK_SCRIPT)
+    statusline_ok = _statusline_installed(settings)
 
-    both_installed = cost_hook_installed and resume_hook_installed and subagent_hook_installed
+    all_installed = cost_ok and resume_ok and subagent_ok and statusline_ok
 
-    if both_installed:
-        print(f"{C.GREEN}Hooks already installed! Scripts updated at {DATA_DIR}{C.RESET}")
+    if all_installed:
+        print(f"{C.GREEN}All hooks + status line already installed! Scripts updated at {DATA_DIR}{C.RESET}")
         return
 
     print()
-    print(f"{C.BOLD}{C.CYAN}TokenXRay — Install Live Cost + Auto-Checkpoint Hooks{C.RESET}")
+    print(f"{C.BOLD}{C.CYAN}TokenXRay — Install Hooks + Status Line{C.RESET}")
     print(f"{C.DIM}{'─' * 70}{C.RESET}")
     print(f"  Cost hook:     {HOOK_SCRIPT}")
     print(f"  Resume hook:   {RESUME_HOOK_SCRIPT}")
     print(f"  Subagent hook: {SUBAGENT_HOOK_SCRIPT}")
-    print(f"  Tracks cost, auto-checkpoints at split threshold, warns on Agent calls")
+    print(f"  Status line:   {STATUSLINE_SCRIPT}")
+    print()
+    print(f"  Hooks track cost, auto-checkpoint, and warn on Agent calls.")
+    print(f"  Status line shows live session health at the bottom of Claude Code.")
     print()
 
     if getattr(args, "confirm", False):
-        if not cost_hook_installed:
+        if not cost_ok:
             hook_entry = {
                 "matcher": ".*",
                 "hooks": [{"type": "command", "command": f"python3 {HOOK_SCRIPT}"}],
@@ -818,7 +954,7 @@ def run(args):
             post_tool.append(hook_entry)
             hooks["PostToolUse"] = post_tool
 
-        if not resume_hook_installed:
+        if not resume_ok:
             resume_entry = {
                 "matcher": "",
                 "hooks": [{"type": "command", "command": f"python3 {RESUME_HOOK_SCRIPT}"}],
@@ -828,7 +964,7 @@ def run(args):
             user_prompt.append(resume_entry)
             hooks["UserPromptSubmit"] = user_prompt
 
-        if not subagent_hook_installed:
+        if not subagent_ok:
             subagent_entry = {
                 "matcher": "Agent",
                 "hooks": [{"type": "command", "command": f"python3 {SUBAGENT_HOOK_SCRIPT}"}],
@@ -840,10 +976,17 @@ def run(args):
 
         settings["hooks"] = hooks
 
+        if not statusline_ok:
+            settings["statusLine"] = {
+                "type": "command",
+                "command": f"python3 {STATUSLINE_SCRIPT}",
+                "padding": 2,
+            }
+
         with open(SETTINGS_FILE, "w") as f:
             json.dump(settings, f, indent=2)
 
-        print(f"  {C.GREEN}{C.BOLD}Hooks installed! Restart Claude Code to activate.{C.RESET}")
+        print(f"  {C.GREEN}{C.BOLD}Hooks + status line installed! Restart Claude Code to activate.{C.RESET}")
     else:
         print(f"  Run: {C.BOLD}tokenxray --install-hook --confirm{C.RESET} to auto-install")
 

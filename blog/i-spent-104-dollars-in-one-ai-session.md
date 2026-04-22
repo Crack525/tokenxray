@@ -83,10 +83,11 @@ Drill into any session and it breaks down the cost by cache read, cache create, 
 
 ### What it does about it
 
-After a one-time `tokenxray --install-hook --confirm`, two Claude Code hooks run automatically in every session:
+After a one-time `tokenxray --install-hook --confirm`, three Claude Code hooks run automatically in every session:
 
-- **Cost hook** — tracks spending silently in the background. Shows status every 10 turns, alerts at cost thresholds. At 80 turns or $30, auto-saves your session state to `.claude/checkpoint.md`. If you want the session blocked rather than just warned, enable hard-stop mode in `~/.tokenxray/config.json` — it returns exit code 2 past a configurable ceiling, so Claude is forced to wrap up before any next action.
-- **Resume hook** — when you start a fresh session, detects the checkpoint and restores context automatically. Fires once, then gets out of the way.
+- **Cost hook** — tracks spending silently in the background. Shows status every 10 turns, alerts at cost thresholds. At 60 turns or $5, auto-saves your session state to `.claude/checkpoint.md`. If you want the session blocked rather than just warned, enable hard-stop mode in `~/.tokenxray/config.json` — it returns exit code 2 past a configurable ceiling, so Claude is forced to wrap up before any next action.
+- **Resume hook** — when you start a fresh session, detects the checkpoint and prints last-session stats plus the checkpoint path. It fires once, then gets out of the way.
+- **Subagent hook** — warns before `Agent` tool calls. Shows a full warning on the first subagent call in a session, then periodic reminders, so high-cost subprocess usage is visible in real time.
 
 You never run `tokenxray` during a session. The hooks handle it.
 
@@ -116,11 +117,11 @@ None of them read your existing session logs. None auto-checkpoint and resume.
 
 The fix isn't complicated. It's session discipline:
 
-1. **Split sessions at 80 turns.** A 160-turn session costs 4x+ what two 80-turn sessions cost, because context accumulates quadratically.
+1. **Split sessions at 60 turns.** A 120-turn session costs 4x+ what two 60-turn sessions cost, because context accumulates quadratically.
 2. **Use Sonnet for routine tasks.** Opus costs 5x more. Your `git status` doesn't need a $15/MTok model.
-3. **Avoid agent subprocesses for simple lookups.** `Read` is cheaper than spawning a subagent that re-reads your entire context.
+3. **Avoid agent subprocesses for simple lookups.** `Read` is cheaper than spawning a subagent that re-reads your entire context. TokenXRay now warns on these calls in real time via the subagent hook.
 
-TokenXRay automates #1 completely. It shows you #2 and #3 in the diagnosis.
+TokenXRay automates #1 completely. It shows you #2 and reinforces #3 both in diagnosis and in-session subagent warnings.
 
 A 200-turn session doesn't cost 2× a 100-turn session — it costs roughly 4× more, because context compounds on every turn. Applied retroactively to my full 686-session history, these patterns would have saved me over **$8,000**.
 

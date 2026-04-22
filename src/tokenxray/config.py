@@ -20,6 +20,7 @@ SETTINGS_FILE = Path.home() / ".claude" / "settings.json"
 DATA_DIR = Path.home() / ".tokenxray"
 BASELINE_FILE = DATA_DIR / "baseline.json"
 HOOK_SCRIPT = DATA_DIR / "cost_hook.py"
+STATUSLINE_SCRIPT = DATA_DIR / "statusline.py"
 LIVE_SESSION_FILE = DATA_DIR / "live_session.json"
 
 # Backward compat alias
