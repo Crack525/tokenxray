@@ -17,6 +17,19 @@ I spent $104 in a single Claude Code session. Then I audited all 514 of mine and
   <img src="blog/tokenxray-explained.png" alt="TokenXRay — The Problem and Solution" width="800">
 </p>
 
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="demo/demo.gif" alt="tokenxray CLI — overview, session drill-down, diagnose"/><br/>
+      <sub><b>CLI</b> — overview · session drill-down · diagnose</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="demo/demo-session.gif" alt="TokenXRay status line — live hints in Claude Code"/><br/>
+      <sub><b>Status line</b> — live cost + hints in every Claude Code session</sub>
+    </td>
+  </tr>
+</table>
+
 ## Install
 
 ```bash

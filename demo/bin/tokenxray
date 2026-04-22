@@ -1,0 +1,11 @@
+#!/bin/bash
+DEMO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_DIR="$(cd "$DEMO_DIR/.." && pwd)"
+REAL_HOME="$(eval echo ~"$(id -un)")"
+UV="$(command -v uv 2>/dev/null || echo "$REAL_HOME/.local/bin/uv")"
+
+HOME="$DEMO_DIR/home" \
+  "$UV" run --project "$REPO_DIR" tokenxray "$@" \
+  2>/dev/null | sed "s|$REAL_HOME|~|g" \
+             | sed "s|$REPO_DIR|/path/to/tokenxray|g" \
+             | sed "s|$DEMO_DIR/home|~|g"

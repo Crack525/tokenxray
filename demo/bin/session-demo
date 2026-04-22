@@ -1,0 +1,3 @@
+#!/bin/bash
+DEMO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+exec python3 "$DEMO_DIR/bin/mock-session"

@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+"""
+Simulate a Claude Code session showing TokenXRay status line hints progressing.
+Each "turn" shows user prompt → Claude response → status line update.
+Context grows from 5% to 89%, then a hint fires.
+"""
+import sys
+import time
+
+# ANSI color codes
+RESET  = "\033[0m"
+BOLD   = "\033[1m"
+DIM    = "\033[2m"
+GREEN  = "\033[32m"
+YELLOW = "\033[33m"
+RED    = "\033[31m"
+CYAN   = "\033[36m"
+
+def dim(s):    return f"{DIM}{s}{RESET}"
+def bold(s):   return f"{BOLD}{s}{RESET}"
+def green(s):  return f"{GREEN}{s}{RESET}"
+def yellow(s): return f"{YELLOW}{s}{RESET}"
+def red(s):    return f"{RED}{s}{RESET}"
+def dim_c(s):  return f"{DIM}{CYAN}{s}{RESET}"
+
+SEP = dim("│")
+
+def cost_color(cost):
+    return GREEN if cost < 1 else YELLOW if cost < 5 else RED
+
+def ctx_color(pct):
+    return GREEN if pct < 50 else YELLOW if pct < 75 else RED
+
+def velocity(cpt):
+    if cpt < 0.05:  return "\u25b8"
+    if cpt < 0.15:  return "\u25b8\u25b8"
+    if cpt < 0.40:  return "\u25b8\u25b8\u25b8"
+    return "\U0001f525"
+
+def status_normal(cost, turns, ctx_pct, duration_m):
+    cpt = cost / max(turns, 1)
+    avg_per_turn = ctx_pct / max(turns, 1)
+    left = max(0, int((95 - ctx_pct) / avg_per_turn)) if avg_per_turn > 0 else 0
+    cc  = cost_color(cost)
+    cc2 = ctx_color(ctx_pct)
+    vel = velocity(cpt)
+    parts = [
+        dim("Sonnet"),
+        f"{cc}${cost:.2f}{RESET}",
+        dim(vel),
+        dim(f"T{turns}"),
+        dim(f"~${cpt:.2f}/t"),
+        f"{cc2}ctx {ctx_pct:.0f}%{RESET}",
+        dim(f"~{left} left") if 0 < left < 200 else "",
+        dim(f"{duration_m}m"),
+    ]
+    return f" {SEP} ".join(p for p in parts if p)
+
+def status_hint(cost, ctx_pct, hint_text, hint_code):
+    cc = cost_color(cost)
+    parts = [
+        dim("Sonnet"),
+        f"{cc}${cost:.2f}{RESET}",
+        f"{ctx_color(ctx_pct)}ctx {ctx_pct:.0f}%{RESET}",
+        f"{hint_code}{hint_text}{RESET}",
+    ]
+    return f" {SEP} ".join(parts)
+
+# (user_msg, claude_snippet, cumulative_cost, ctx_pct, duration_m)
+TURNS = [
+    (
+        "Add pagination to the user list endpoint",
+        "Adding cursor-based pagination to `GET /users`...\n"
+        "  Updated router with `?cursor` and `?limit` params.\n"
+        "  Added `next_cursor` to the response envelope.",
+        0.12, 5, 3,
+    ),
+    (
+        "Now add filtering by role and status",
+        "Extending the query builder with `.where(role=role, status=status)`.\n"
+        "  Filters compose correctly with the cursor. Tests pass.",
+        0.27, 10, 7,
+    ),
+    (
+        "Write integration tests for both features",
+        "Writing 6 pytest fixtures covering pagination + filters...\n"
+        "  `test_pagination_cursor`, `test_filter_by_role`, `test_combined`...\n"
+        "  All pass. Coverage on the endpoint is now 94%.",
+        0.48, 17, 13,
+    ),
+    (
+        "Refactor auth middleware to support API keys",
+        "Reading `middleware/auth.py`... adding `ApiKeyBackend` class.\n"
+        "  Chained before JWT verification. Existing sessions unaffected.",
+        0.74, 26, 20,
+    ),
+    (
+        "Add rate limiting per API key",
+        "Adding Redis-backed sliding-window rate limiter (60s / 100 req).\n"
+        "  Returns 429 with `Retry-After` header on breach.",
+        1.06, 36, 28,
+    ),
+    (
+        "Generate OpenAPI docs for all new endpoints",
+        "Added `response_model` annotations to all 4 endpoints.\n"
+        "  `/docs` now shows full pagination + filter + rate-limit params.",
+        1.44, 48, 37,
+    ),
+    (
+        "Add admin dashboard with aggregated stats",
+        "Building `GET /admin/stats` — users by role, API key usage, error rates.\n"
+        "  Single CTE avoids N+1. Response cached 60s via `@cache(ttl=60)`.",
+        1.89, 60, 48,
+    ),
+    (
+        "Write the Alembic migration for api_keys table",
+        "Migration `0024_api_keys.py`: creates `api_keys(id, user_id, key_hash...)`.\n"
+        "  Adds index on `user_id`. No backfill needed.",
+        2.41, 72, 60,
+    ),
+    # Turn 9 — hint fires: ctx > 85%
+    (
+        "Add webhook delivery for auth events",
+        "Adding `AuthEventEmitter` + `WebhookDelivery` model.\n"
+        "  Retry: exponential backoff 1s → 4s → 16s (3 attempts).",
+        3.00, 87, 73,
+    ),
+]
+
+def pause(ms):
+    time.sleep(ms / 1000)
+
+def run():
+    print()
+    for i, (user_msg, claude_resp, cost, ctx_pct, dur_m) in enumerate(TURNS):
+        turns = i + 1
+
+        # ── User message ─────────────────────────────────────────────────────
+        print(f"{bold('>')} {user_msg}")
+        pause(300)
+
+        # ── Claude response ───────────────────────────────────────────────────
+        sys.stdout.write(dim("  \u29d7 thinking...\n"))
+        sys.stdout.flush()
+        pause(500)
+        sys.stdout.write("\033[1A\033[2K")
+        sys.stdout.flush()
+
+        for line in claude_resp.strip().split("\n"):
+            print(f"  {line}")
+            pause(100)
+
+        pause(250)
+
+        # ── Status line ───────────────────────────────────────────────────────
+        if ctx_pct > 85:
+            sl = status_hint(
+                cost, ctx_pct,
+                f"\U0001f525 ctx {ctx_pct:.0f}% \u2014 run: tokenxray --checkpoint \u00b7 new session",
+                RED + BOLD,
+            )
+        else:
+            sl = status_normal(cost, turns, ctx_pct, dur_m)
+
+        print(f"\n  {dim_c('[TokenXRay]')} {sl}\n")
+        pause(800 if i < len(TURNS) - 1 else 1800)
+
+    # ── User runs the checkpoint command ─────────────────────────────────────
+    print(f"{bold('>')} tokenxray --checkpoint")
+    pause(500)
+    print(f"  {GREEN}Checkpoint saved \u2192 .claude/checkpoint.md{RESET}")
+    print(f"  {DIM}Start a new session and say: read .claude/checkpoint.md.loaded{RESET}")
+    print()
+    pause(2500)
+
+if __name__ == "__main__":
+    run()
