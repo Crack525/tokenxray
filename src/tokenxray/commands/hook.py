@@ -831,9 +831,9 @@ def get_hint(model_name, total_cost, ctx_pct, turns, rate_data):
     if model_name and "opus" in model_name.lower() and total_cost > 3:
         return ("\\u2192 /model sonnet \\u2014 same task, 5x cheaper", "35")
 
-    # P5: marathon session — checkpoint guaranteed (auto-saves at 60 turns, P5 requires >80)
+    # P5: marathon session — auto-checkpoint saved at 60 turns, but may be stale; run fresh one
     if turns > 80 and total_cost > 2:
-        return ("\\u2192 checkpoint saved \\u00b7 new session \\u00b7 say: read checkpoint.md.loaded", "33")
+        return ("\\u2192 run: tokenxray --checkpoint \\u00b7 new session \\u00b7 say: read checkpoint.md.loaded", "33")
 
     return None
 

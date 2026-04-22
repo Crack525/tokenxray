@@ -58,7 +58,7 @@ Hints are prioritized — only the highest-priority action shows:
 | P2 | Context > 85% | `🔥 ctx X% — run: tokenxray --checkpoint · new session` |
 | P3 | Context > 60% | `⚠ ctx X% — new session soon · saves ~60% tokens` |
 | P4 | Opus + cost > $3 | `→ /model sonnet — same task, 5x cheaper` |
-| P5 | 80+ turns + cost > $2 | `→ checkpoint saved · new session · say: read checkpoint.md.loaded` |
+| P5 | 80+ turns + cost > $2 | `→ run: tokenxray --checkpoint · new session · say: read checkpoint.md.loaded` |
 
 Disable hints (keep metrics): set `"statusline_hints": false` in `~/.tokenxray/config.json`.
 
