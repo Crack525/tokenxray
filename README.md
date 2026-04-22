@@ -1,10 +1,15 @@
 <p align="center">
-  <img src="assets/icon.svg" width="64" height="64" alt="TokenXRay icon">
+  <img src="assets/logo.svg" alt="TokenXRay" width="360"/>
 </p>
 
-# TokenXRay
+<p align="center">
+  <a href="https://pypi.org/project/tokenxray/"><img src="https://img.shields.io/pypi/v/tokenxray" alt="PyPI"></a>
+  <a href="https://pypistats.org/packages/tokenxray"><img src="https://img.shields.io/pypi/dm/tokenxray" alt="Downloads"></a>
+  <a href="https://pypi.org/project/tokenxray/"><img src="https://img.shields.io/pypi/pyversions/tokenxray" alt="Python"></a>
+  <a href="https://github.com/Crack525/tokenxray/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/tokenxray" alt="License"></a>
+</p>
 
-**See where your AI coding tokens actually go.**
+<p align="center"><strong>See where your AI coding tokens actually go.</strong></p>
 
 I spent $104 in a single Claude Code session. Then I audited all 514 of mine and found that **9% of sessions burned 92% of the money** — $11,600 out of $12,600 total. The culprit: context that grows quadratically, cache creation fees nobody mentions, and tool results that ride in context forever.
 
