@@ -591,6 +591,47 @@ class TestEdgeCases:
 
         assert cp["user_messages"] == []
 
+    def test_list_format_text_messages_extracted(self, tmp_path):
+        """Regression: modern Claude Code writes user messages as list[{type,text}].
+        extract_checkpoint must handle this format — the original bug silently
+        dropped all messages, producing empty checkpoints."""
+        entries = [
+            {"type": "user", "cwd": "/dev", "sessionId": "s1", "gitBranch": "main",
+             "message": {"content": [
+                 {"type": "text", "text": "Fix the authentication module and add OAuth"},
+             ]}},
+            {"type": "user",
+             "message": {"content": [
+                 {"type": "tool_result", "content": "some result"},
+                 {"type": "text", "text": "Now add rate limiting to the endpoints"},
+             ]}},
+        ]
+        filepath = str(tmp_path / "list_text.jsonl")
+        _write_jsonl(filepath, entries)
+        cp = extract_checkpoint(filepath)
+
+        assert "Fix the authentication module" in cp["user_messages"][0]
+        assert "Now add rate limiting" in cp["user_messages"][1]
+        assert cp["session_id"] == "s1"
+
+    def test_mixed_str_and_list_messages(self, tmp_path):
+        """Sessions can mix str-format and list-format user messages."""
+        entries = [
+            {"type": "user", "cwd": "/dev", "sessionId": "s1", "gitBranch": "main",
+             "message": {"content": "First message as plain string format"}},
+            {"type": "user",
+             "message": {"content": [
+                 {"type": "text", "text": "Second message in list format here"},
+             ]}},
+        ]
+        filepath = str(tmp_path / "mixed.jsonl")
+        _write_jsonl(filepath, entries)
+        cp = extract_checkpoint(filepath)
+
+        assert len(cp["user_messages"]) == 2
+        assert "First message" in cp["user_messages"][0]
+        assert "Second message" in cp["user_messages"][1]
+
 
 # ─── Tests: load_config (from hook code) ─────────────────────────────────────
 
