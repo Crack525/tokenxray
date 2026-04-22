@@ -819,21 +819,21 @@ def get_hint(model_name, total_cost, ctx_pct, turns, rate_data):
         if remaining is not None and remaining < 3:
             return (f"\\u26a0 {remaining} req left \\u2014 pause or hit rate limit", "31;1")
 
-    # P2: context critical
+    # P2: context critical — checkpoint not guaranteed, tell user to run it
     if ctx_pct > 85:
-        return (f"\\U0001f525 ctx {ctx_pct:.0f}% \\u2014 split now or lose context", "31;1")
+        return (f"\\U0001f525 ctx {ctx_pct:.0f}% \\u2014 run: tokenxray --checkpoint \\u00b7 new session", "31;1")
 
-    # P3: context warning
+    # P3: context warning — advisory, no emergency HOW needed
     if ctx_pct > 60:
-        return (f"\\u26a0 ctx {ctx_pct:.0f}% \\u2014 split soon, saves ~60% tokens", "33;1")
+        return (f"\\u26a0 ctx {ctx_pct:.0f}% \\u2014 new session soon \\u00b7 saves ~60% tokens", "33;1")
 
     # P4: Opus cost nudge
     if model_name and "opus" in model_name.lower() and total_cost > 3:
         return ("\\u2192 /model sonnet \\u2014 same task, 5x cheaper", "35")
 
-    # P5: marathon session
+    # P5: marathon session — checkpoint guaranteed (auto-saves at 60 turns, P5 requires >80)
     if turns > 80 and total_cost > 2:
-        return ("\\u2192 checkpoint & split \\u2014 marathon burns 4x", "33")
+        return ("\\u2192 checkpoint saved \\u00b7 new session \\u00b7 say: read checkpoint.md.loaded", "33")
 
     return None
 

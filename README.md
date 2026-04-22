@@ -55,10 +55,10 @@ Hints are prioritized — only the highest-priority action shows:
 | Priority | Trigger | Hint |
 |----------|---------|------|
 | P1 | Rate limit < 3 requests left | `⚠ N req left — pause or hit rate limit` |
-| P2 | Context > 85% | `🔥 ctx X% — split now or lose context` |
-| P3 | Context > 60% | `⚠ ctx X% — split soon, saves ~60% tokens` |
+| P2 | Context > 85% | `🔥 ctx X% — run: tokenxray --checkpoint · new session` |
+| P3 | Context > 60% | `⚠ ctx X% — new session soon · saves ~60% tokens` |
 | P4 | Opus + cost > $3 | `→ /model sonnet — same task, 5x cheaper` |
-| P5 | 80+ turns + cost > $2 | `→ checkpoint & split — marathon burns 4x` |
+| P5 | 80+ turns + cost > $2 | `→ checkpoint saved · new session · say: read checkpoint.md.loaded` |
 
 Disable hints (keep metrics): set `"statusline_hints": false` in `~/.tokenxray/config.json`.
 
