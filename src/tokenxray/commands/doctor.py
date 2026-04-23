@@ -187,7 +187,7 @@ def run(_args=None) -> None:
         age = _age_str(stat.st_mtime)
         try:
             data = json.loads(LIVE_SESSION_FILE.read_text())
-            cost = data.get("cost", 0.0)
+            cost = data.get("total_cost", data.get("cost", 0.0))
             turns = data.get("turns", data.get("turn_count", 0))
             print(f"  {_ok(f'Last hook fire   {age}  (${cost:.4f} · {turns} turns)')}")
         except (json.JSONDecodeError, KeyError):
