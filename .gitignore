@@ -15,6 +15,7 @@ uv.lock
 tokenxray_dashboard.html
 qa-results/
 .vscode/
+.claude/checkpoint.md
 .claude/checkpoint.md.loaded
 .claude/settings.local.json
 demo/home/
