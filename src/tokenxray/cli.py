@@ -29,6 +29,8 @@ def main():
     parser.add_argument("--dashboard", action="store_true",
                         help="Generate interactive HTML dashboard with charts")
     parser.add_argument("--confirm", action="store_true", help="Auto-confirm hook installation")
+    parser.add_argument("--doctor", action="store_true",
+                        help="Diagnose installation health (hooks, settings, data sources)")
     parser.add_argument("--mcp", action="store_true",
                         help="MCP tool usage audit — find dead-weight servers and unused tools")
     parser.add_argument("--enumerate-tools", action="store_true",
@@ -45,7 +47,10 @@ def main():
     if args.no_color:
         C.disable()
 
-    if args.mcp:
+    if args.doctor:
+        from tokenxray.commands.doctor import run
+        run(args)
+    elif args.mcp:
         from tokenxray.commands.mcp import run
         run(args)
     elif args.session:

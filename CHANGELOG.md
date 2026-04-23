@@ -1,5 +1,20 @@
 # TokenXRay Changelog
 
+## v0.3.19 — 2026-04-23 · `tokenxray --doctor`
+
+New diagnosis-only command that audits installation health in one shot:
+
+- Hook scripts present at `~/.tokenxray/` (size + age)
+- `pricing.json` last_updated date
+- Claude Code registrations in `~/.claude/settings.json` (PostToolUse, UserPromptSubmit, PreToolUse, statusLine)
+- Hook activity via `live_session.json` (last fire time + cost/turns)
+- Data source session counts (Claude, Gemini, Copilot)
+- One-line verdict: **healthy / installed but idle / not installed / partially configured**
+
+No writes — safe to run anytime. 18 new tests.
+
+---
+
 ## v0.3.18 — 2026-04-23 · pricing correction
 
 Verified all model prices against official Anthropic + Google pricing pages on
