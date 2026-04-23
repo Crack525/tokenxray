@@ -2,6 +2,7 @@
 
 import json
 import glob
+import sys
 from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
@@ -407,7 +408,8 @@ def load_all_sessions(base_path=None, include_gemini=True, source_filter=None):
                     s.setdefault("source", "claude")
                     s["cost"] = calc_cost(s)
                     sessions.append(s)
-            except Exception:
+            except Exception as e:
+                print(f"  [tokenxray] skipped Claude session {Path(f).name}: {e}", file=sys.stderr)
                 continue
 
     # Gemini CLI sessions
@@ -419,7 +421,6 @@ def load_all_sessions(base_path=None, include_gemini=True, source_filter=None):
                     s["cost"] = calc_cost(s)
                     sessions.append(s)
             except Exception as e:
-                import sys
                 print(f"  [tokenxray] skipped Gemini session {Path(f).name}: {e}", file=sys.stderr)
                 continue
 
@@ -432,7 +433,6 @@ def load_all_sessions(base_path=None, include_gemini=True, source_filter=None):
                     s["cost"] = calc_cost(s)
                     sessions.append(s)
             except Exception as e:
-                import sys
                 print(f"  [tokenxray] skipped Copilot session {Path(f).name}: {e}", file=sys.stderr)
                 continue
 

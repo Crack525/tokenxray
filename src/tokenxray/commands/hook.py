@@ -574,7 +574,7 @@ def show_last_session_summary():
         f"\\033[2m[TokenXRay] Last session: {turns} turns, "
         f"${cost:.2f} total, ~${cost_per_turn:.2f}/turn, "
         f"{model}, ctx {ctx_str}\\033[0m",
-        file=sys.stderr,
+        file=sys.stdout,
     )
 
     # Mark as shown

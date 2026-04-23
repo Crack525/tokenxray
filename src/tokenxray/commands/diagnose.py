@@ -118,17 +118,39 @@ def _check_model_choice(sessions, total_cost, recs):
 
 
 def _check_subagents(sessions, total_cost, recs):
-    agents = [s for s in sessions if s["project"] == "subagents"]
-    if agents:
-        agent_cost = sum(s["cost"]["total"] for s in agents)
-        pct = agent_cost / total_cost * 100 if total_cost > 0 else 0
-        if pct > 10:
+    # Subagent JSONL files are excluded from loading. Detect subagent usage from
+    # Agent tool calls in the parent sessions instead.
+    sessions_with_agents = []
+    total_agent_calls = 0
+    for s in sessions:
+        calls = s.get("tool_calls", {})
+        agent_calls = sum(
+            count for name, count in calls.items()
+            if name.lower() == "agent" or name.lower().startswith("agent")
+        )
+        if agent_calls > 0:
+            sessions_with_agents.append((s, agent_calls))
+            total_agent_calls += agent_calls
+
+    if sessions_with_agents:
+        agent_session_cost = sum(s["cost"]["total"] for s, _ in sessions_with_agents)
+        pct = agent_session_cost / total_cost * 100 if total_cost > 0 else 0
+        if pct > 10 or total_agent_calls >= 10:
             recs.append({
                 "severity": "high",
-                "title": f"Subagents cost {fmt_cost(agent_cost)} ({pct:.0f}% of total)",
-                "detail": f"{len(agents)} subagent sessions with independent contexts.",
-                "action": "Use direct tools (Grep, Read, Glob) instead of agents for simple lookups.",
-                "potential_savings": agent_cost * 0.30,
+                "title": (
+                    f"Subagent-heavy workflow: {total_agent_calls} Agent calls in "
+                    f"{len(sessions_with_agents)} sessions"
+                ),
+                "detail": (
+                    f"These sessions account for {fmt_cost(agent_session_cost)} "
+                    f"({pct:.0f}% of total spend)."
+                ),
+                "action": (
+                    "Use direct tools (Grep, Read, Glob) for simple lookups and "
+                    "reserve Agent calls for high-leverage tasks."
+                ),
+                "potential_savings": agent_session_cost * 0.20,
             })
 
 
