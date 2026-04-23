@@ -27,12 +27,17 @@ LIVE_SESSION_FILE = DATA_DIR / "live_session.json"
 PROJECTS_DIR = CLAUDE_PROJECTS_DIR
 
 # ─── Pricing (per million tokens) ──────────────────────────────────────────────
+# Verified against Anthropic + Google official pricing pages on 2026-04-23.
+# Claude cache_create = 5-min TTL write price (1-hr TTL is 2× input; JSONL
+# does not distinguish TTL tiers, so this is a lower-bound assumption).
+
+PRICING_LAST_UPDATED = "2026-04-23"
 
 PRICING = {
     # Claude models
     "claude-opus-4-6": {
-        "input": 15.0, "output": 75.0,
-        "cache_read": 1.50, "cache_create": 18.75,
+        "input": 5.0, "output": 25.0,
+        "cache_read": 0.50, "cache_create": 6.25,
         "label": "Opus 4.6",
     },
     "claude-sonnet-4-6": {
@@ -46,8 +51,8 @@ PRICING = {
         "label": "Sonnet 4.5",
     },
     "claude-haiku-4-5-20251001": {
-        "input": 0.80, "output": 4.0,
-        "cache_read": 0.08, "cache_create": 1.0,
+        "input": 1.0, "output": 5.0,
+        "cache_read": 0.10, "cache_create": 1.25,
         "label": "Haiku 4.5",
     },
     # Copilot (estimated from char counts — no real token data available)
@@ -56,15 +61,15 @@ PRICING = {
         "cache_read": 0.30, "cache_create": 3.75,
         "label": "Copilot",
     },
-    # Gemini models (<=200K context tier)
+    # Gemini models (<=200K context tier, symmetric context cache pricing)
     "gemini-2.5-pro": {
         "input": 1.25, "output": 10.0,
-        "cache_read": 0.3125, "cache_create": 1.25,
+        "cache_read": 0.125, "cache_create": 0.125,
         "label": "Gemini 2.5 Pro",
     },
     "gemini-2.5-flash": {
-        "input": 0.15, "output": 0.60,
-        "cache_read": 0.0375, "cache_create": 0.15,
+        "input": 0.30, "output": 2.50,
+        "cache_read": 0.03, "cache_create": 0.03,
         "label": "Gemini 2.5 Flash",
     },
 }

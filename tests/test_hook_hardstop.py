@@ -144,9 +144,9 @@ class TestHardStopEnabled:
         fake_home["config_file"].write_text(json.dumps({
             "hard_stop": True,
             "hard_stop_turns": 9999,
-            "hard_stop_cost": 1.0,
+            "hard_stop_cost": 0.40,
         }))
-        # 3 Opus turns × (10 000 input + 5 000 output) ≈ $1.58
+        # 3 Opus turns × (10 000 input + 5 000 output) ≈ $0.53 (Opus 4.6 @ $5/$25)
         fake_home["session_jsonl"].write_text(
             _make_jsonl(3, model="claude-opus-4-6", input_tokens=10_000, output_tokens=5_000)
         )
@@ -158,7 +158,7 @@ class TestHardStopEnabled:
         fake_home["config_file"].write_text(json.dumps({
             "hard_stop": True,
             "hard_stop_turns": 9999,
-            "hard_stop_cost": 1.0,
+            "hard_stop_cost": 0.40,
         }))
         fake_home["session_jsonl"].write_text(
             _make_jsonl(3, model="claude-opus-4-6", input_tokens=10_000, output_tokens=5_000)

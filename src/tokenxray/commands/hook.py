@@ -4,7 +4,7 @@ import json
 import os
 
 from tokenxray.colors import C
-from tokenxray.config import DATA_DIR, HOOK_SCRIPT, STATUSLINE_SCRIPT, SETTINGS_FILE, PRICING, DEFAULT_PRICING
+from tokenxray.config import DATA_DIR, HOOK_SCRIPT, STATUSLINE_SCRIPT, SETTINGS_FILE, PRICING, DEFAULT_PRICING, PRICING_LAST_UPDATED
 
 RESUME_HOOK_SCRIPT = DATA_DIR / "resume_hook.py"
 SUBAGENT_HOOK_SCRIPT = DATA_DIR / "subagent_hook.py"
@@ -1000,7 +1000,11 @@ def _write_scripts():
     import json as _json
     pricing_file = DATA_DIR / "pricing.json"
     with open(pricing_file, "w") as f:
-        _json.dump({"pricing": PRICING, "default": DEFAULT_PRICING}, f, indent=2)
+        _json.dump({
+            "pricing": PRICING,
+            "default": DEFAULT_PRICING,
+            "last_updated": PRICING_LAST_UPDATED,
+        }, f, indent=2)
 
 
 def _load_settings():

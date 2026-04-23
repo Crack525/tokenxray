@@ -4,6 +4,7 @@ import argparse
 
 from tokenxray import __version__
 from tokenxray.colors import C
+from tokenxray.config import PRICING_LAST_UPDATED
 
 
 def main():
@@ -35,7 +36,7 @@ def main():
     parser.add_argument("--source", choices=["claude", "gemini", "copilot", "all"], default="all",
                         help="Filter by tool (default: all)")
     parser.add_argument("--version", "-v", action="version",
-                        version=f"tokenxray {__version__}",
+                        version=f"tokenxray {__version__} · pricing updated {PRICING_LAST_UPDATED}",
                         help="Show version and exit")
     parser.add_argument("--no-color", action="store_true", help="Disable colored output")
 

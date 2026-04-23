@@ -2,7 +2,7 @@
 
 from tokenxray.colors import C
 from tokenxray.display import fmt_cost, fmt_tokens, bar, duration_str, display_project_name
-from tokenxray.config import get_model_label, DEFAULT_PRICING
+from tokenxray.config import get_model_label, DEFAULT_PRICING, PRICING_LAST_UPDATED
 from tokenxray.parser import load_all_sessions, _pick_model
 
 
@@ -26,7 +26,7 @@ def run(args):
     total_saved = sum(s["cost"]["cache_savings"] for s in sessions)
 
     print()
-    print(f"{C.BOLD}{C.CYAN}TokenXRay — Session Overview{C.RESET}")
+    print(f"{C.BOLD}{C.CYAN}TokenXRay — Session Overview{C.RESET}  {C.DIM}pricing updated {PRICING_LAST_UPDATED} · anthropic + google{C.RESET}")
     print(f"{C.DIM}{'─' * 70}{C.RESET}")
     print(
         f"  {C.BOLD}{len(sessions)}{C.RESET} sessions  "

@@ -283,8 +283,8 @@ class TestPickModel:
 class TestPricing:
     def test_exact_match(self):
         p = get_pricing("claude-opus-4-6")
-        assert p["input"] == 15.0
-        assert p["output"] == 75.0
+        assert p["input"] == 5.0
+        assert p["output"] == 25.0
 
     def test_prefix_match(self):
         p = get_pricing("claude-sonnet-4-5-20250514")
