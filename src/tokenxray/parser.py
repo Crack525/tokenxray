@@ -143,29 +143,63 @@ def _parse_user_entry(entry, session):
 
 
 def _pick_model(models_used):
-    """Pick the best model for pricing, skipping <synthetic>."""
-    real = [m for m in models_used if m != "<synthetic>"]
+    """Pick a representative model for display/fallback, skipping <synthetic>."""
+    real = sorted(m for m in models_used if m != "<synthetic>")
     if real:
         return real[0]
-    # Pure synthetic (subagent) — assume Opus since that's the parent model
     return "claude-opus-4-6"
 
 
 def calc_cost(session):
-    """Calculate session cost using model-specific pricing."""
-    model = _pick_model(session["models_used"])
-    pricing = get_pricing(model)
+    """Calculate session cost with per-turn model-specific pricing.
 
-    input_cost = (session["total_input"] / 1e6) * pricing["input"]
-    output_cost = (session["total_output"] / 1e6) * pricing["output"]
-    cache_read_cost = (session["total_cache_read"] / 1e6) * pricing["cache_read"]
-    cache_create_cost = (session["total_cache_create"] / 1e6) * pricing["cache_create"]
+    Each turn is priced using its own model so mixed-model sessions (e.g. a
+    session that switched from Opus to Sonnet mid-way) are costed accurately
+    and deterministically regardless of set ordering.
 
-    total = input_cost + output_cost + cache_read_cost + cache_create_cost
-    total_no_cache = (
-        (session["total_input"] + session["total_cache_read"] + session["total_cache_create"])
-        / 1e6 * pricing["input"]
-    ) + output_cost
+    Falls back to session-level aggregate pricing for sessions without per-turn
+    model data (e.g. some Gemini/Copilot edge cases).
+    """
+    turns = session.get("turns", [])
+
+    if turns:
+        input_cost = 0.0
+        output_cost = 0.0
+        cache_read_cost = 0.0
+        cache_create_cost = 0.0
+        total_no_cache = 0.0
+
+        for turn in turns:
+            model = turn.get("model", "unknown")
+            if model in ("<synthetic>", "unknown"):
+                model = _pick_model(session["models_used"])
+            pricing = get_pricing(model)
+
+            inp = turn.get("input", 0)
+            out = turn.get("output", 0)
+            cr = turn.get("cache_read", 0)
+            cc = turn.get("cache_create", 0)
+
+            input_cost += (inp / 1e6) * pricing["input"]
+            output_cost += (out / 1e6) * pricing["output"]
+            cache_read_cost += (cr / 1e6) * pricing["cache_read"]
+            cache_create_cost += (cc / 1e6) * pricing["cache_create"]
+            total_no_cache += ((inp + cr + cc) / 1e6) * pricing["input"] + (out / 1e6) * pricing["output"]
+
+        total = input_cost + output_cost + cache_read_cost + cache_create_cost
+        pricing = get_pricing(_pick_model(session["models_used"]))
+    else:
+        # No per-turn data — fall back to session-level aggregate
+        pricing = get_pricing(_pick_model(session["models_used"]))
+        input_cost = (session["total_input"] / 1e6) * pricing["input"]
+        output_cost = (session["total_output"] / 1e6) * pricing["output"]
+        cache_read_cost = (session["total_cache_read"] / 1e6) * pricing["cache_read"]
+        cache_create_cost = (session["total_cache_create"] / 1e6) * pricing["cache_create"]
+        total = input_cost + output_cost + cache_read_cost + cache_create_cost
+        total_no_cache = (
+            (session["total_input"] + session["total_cache_read"] + session["total_cache_create"])
+            / 1e6 * pricing["input"]
+        ) + output_cost
 
     return {
         "input": input_cost,

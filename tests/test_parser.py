@@ -368,3 +368,93 @@ class TestCopilotParser:
         filepath = _make_copilot_session(str(tmp_path))
         s = parse_copilot_session(filepath)
         assert s["project"].startswith("copilot/")
+
+
+# ─── Mixed-model pricing regression ──────────────────────────────────────────
+
+
+class TestMixedModelPricing:
+    """Regression tests for non-deterministic cost in mixed-model sessions.
+
+    Root cause: models_used was a set converted to list; _pick_model took
+    real[0], which was hash-ordered, so Opus vs Sonnet flipped across runs
+    (5x cost difference). Fix: price per-turn using each turn's own model.
+    """
+
+    def _make_mixed_session(self, tmp_path):
+        """Session with 2 Sonnet turns then 2 Opus turns."""
+        entries = []
+        for i, (model, inp, out) in enumerate([
+            ("claude-sonnet-4-6", 1000, 200),
+            ("claude-sonnet-4-6", 1000, 200),
+            ("claude-opus-4-6",   1000, 200),
+            ("claude-opus-4-6",   1000, 200),
+        ]):
+            entries.append({
+                "type": "user",
+                "timestamp": f"2026-01-01T00:{i:02d}:00Z",
+                "message": {"content": "x" * 50},
+            })
+            entries.append({
+                "type": "assistant",
+                "timestamp": f"2026-01-01T00:{i:02d}:30Z",
+                "message": {
+                    "model": model,
+                    "usage": {"input_tokens": inp, "output_tokens": out,
+                               "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0},
+                    "content": [{"type": "text", "text": "answer"}],
+                },
+            })
+        path = str(tmp_path / "mixed.jsonl")
+        _write_jsonl(path, entries)
+        return path
+
+    def test_mixed_model_cost_is_deterministic(self, tmp_path):
+        path = self._make_mixed_session(tmp_path)
+        costs = [calc_cost(parse_session(path))["total"] for _ in range(10)]
+        assert len(set(round(c, 8) for c in costs)) == 1, (
+            f"Cost non-deterministic across runs: {set(costs)}"
+        )
+
+    def test_mixed_model_cost_is_accurate(self, tmp_path):
+        from tokenxray.config import get_pricing
+        path = self._make_mixed_session(tmp_path)
+        cost = calc_cost(parse_session(path))["total"]
+
+        sonnet = get_pricing("claude-sonnet-4-6")
+        opus = get_pricing("claude-opus-4-6")
+        expected = (
+            2 * ((1000 / 1e6) * sonnet["input"] + (200 / 1e6) * sonnet["output"])
+            + 2 * ((1000 / 1e6) * opus["input"] + (200 / 1e6) * opus["output"])
+        )
+        assert abs(cost - expected) < 1e-9, (
+            f"Expected {expected:.8f}, got {cost:.8f}"
+        )
+
+    def test_single_model_session_unchanged(self, tmp_path):
+        """Single-model sessions should produce the same cost as before."""
+        path = str(tmp_path / "single.jsonl")
+        entries = []
+        for i in range(3):
+            entries.append({
+                "type": "user",
+                "timestamp": f"2026-01-01T00:{i:02d}:00Z",
+                "message": {"content": "x" * 50},
+            })
+            entries.append({
+                "type": "assistant",
+                "timestamp": f"2026-01-01T00:{i:02d}:30Z",
+                "message": {
+                    "model": "claude-sonnet-4-6",
+                    "usage": {"input_tokens": 500, "output_tokens": 100,
+                               "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0},
+                    "content": [{"type": "text", "text": "ok"}],
+                },
+            })
+        _write_jsonl(path, entries)
+        s = parse_session(path)
+        cost = calc_cost(s)["total"]
+
+        pricing = get_pricing("claude-sonnet-4-6")
+        expected = 3 * ((500 / 1e6) * pricing["input"] + (100 / 1e6) * pricing["output"])
+        assert abs(cost - expected) < 1e-9
