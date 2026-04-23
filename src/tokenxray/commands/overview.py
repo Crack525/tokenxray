@@ -2,7 +2,7 @@
 
 from tokenxray.colors import C
 from tokenxray.display import fmt_cost, fmt_tokens, bar, duration_str, display_project_name
-from tokenxray.config import get_model_label
+from tokenxray.config import get_model_label, DEFAULT_PRICING
 from tokenxray.parser import load_all_sessions, _pick_model
 
 
@@ -14,6 +14,12 @@ def run(args):
 
     sessions.sort(key=lambda s: s["cost"]["total"], reverse=True)
     top_n = args.top or 15
+
+    unknown_label = DEFAULT_PRICING["label"]
+    unknown_count = sum(
+        1 for s in sessions
+        if get_model_label(_pick_model(s["models_used"])) == unknown_label
+    )
 
     total_cost = sum(s["cost"]["total"] for s in sessions)
     total_turns = sum(len(s["turns"]) for s in sessions)
@@ -28,6 +34,11 @@ def run(args):
         f"  {C.BOLD}{fmt_cost(total_cost)}{C.RESET} total cost  "
         f"  {C.GREEN}{fmt_cost(total_saved)} saved by caching{C.RESET}"
     )
+    if unknown_count:
+        print(
+            f"  {C.YELLOW}Note: {unknown_count} session(s) have an unrecognized model and were "
+            f"priced using Sonnet defaults — costs may be approximate.{C.RESET}"
+        )
     print()
 
     # Segment breakdown

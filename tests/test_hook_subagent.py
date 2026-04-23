@@ -97,24 +97,25 @@ def test_disable_config_suppresses_output(tmp_path):
     assert result.stdout.strip() == ""
 
 
-# ── Test 4: stale/missing session → silent no-op ─────────────────────────────
+# ── Test 4: stale/missing session → minimal first-call warning ───────────────
 
-def test_stale_session_id_is_noop(tmp_path):
+def test_stale_session_id_shows_warning(tmp_path):
+    # live_session.json has a different session_id → state is None → show first-call warning
     state = _state(session_id="different-session-id")
     payload = {"tool_name": "Agent", "session_id": SESSION_ID}
     result = _run_hook(tmp_path, payload, state=state)
 
     assert result.returncode == 0
-    assert result.stdout.strip() == ""
+    assert "Agent call" in result.stdout
 
 
-def test_missing_live_session_is_noop(tmp_path):
-    # No live_session.json written
+def test_missing_live_session_shows_warning(tmp_path):
+    # No live_session.json written → state is None → show first-call warning
     payload = {"tool_name": "Agent", "session_id": SESSION_ID}
     result = _run_hook(tmp_path, payload, state=None)
 
     assert result.returncode == 0
-    assert result.stdout.strip() == ""
+    assert "Agent call" in result.stdout
 
 
 # ── Test 5: flexible tool_name matching ──────────────────────────────────────

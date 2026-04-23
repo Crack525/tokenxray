@@ -4,7 +4,7 @@ import json
 import os
 
 from tokenxray.colors import C
-from tokenxray.config import DATA_DIR, HOOK_SCRIPT, STATUSLINE_SCRIPT, SETTINGS_FILE
+from tokenxray.config import DATA_DIR, HOOK_SCRIPT, STATUSLINE_SCRIPT, SETTINGS_FILE, PRICING, DEFAULT_PRICING
 
 RESUME_HOOK_SCRIPT = DATA_DIR / "resume_hook.py"
 SUBAGENT_HOOK_SCRIPT = DATA_DIR / "subagent_hook.py"
@@ -59,28 +59,36 @@ def load_config():
         pass
     return cfg
 
-PRICING = {
-    "claude-opus-4-6": {"input": 15.0, "output": 75.0, "cache_read": 1.50, "cache_create": 18.75, "label": "Opus"},
-    "claude-sonnet-4-6": {"input": 3.0, "output": 15.0, "cache_read": 0.30, "cache_create": 3.75, "label": "Sonnet"},
-    "claude-sonnet-4-5": {"input": 3.0, "output": 15.0, "cache_read": 0.30, "cache_create": 3.75, "label": "Sonnet"},
-    "claude-haiku-4-5": {"input": 0.80, "output": 4.0, "cache_read": 0.08, "cache_create": 1.0, "label": "Haiku"},
-}
-DEFAULT = {"input": 3.0, "output": 15.0, "cache_read": 0.30, "cache_create": 3.75, "label": "unknown"}
+PRICING_FILE = Path.home() / ".tokenxray" / "pricing.json"
+
+def _load_pricing():
+    try:
+        with open(PRICING_FILE) as f:
+            data = json.load(f)
+        return data.get("pricing", {}), data.get("default", {"input": 3.0, "output": 15.0, "cache_read": 0.30, "cache_create": 3.75, "label": "unknown"})
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}, {"input": 3.0, "output": 15.0, "cache_read": 0.30, "cache_create": 3.75, "label": "unknown"}
+
+_PRICING, _DEFAULT = _load_pricing()
 
 def get_pricing(model):
-    for key, p in PRICING.items():
-        if key in model:
+    if model in _PRICING:
+        return _PRICING[model]
+    for key, p in _PRICING.items():
+        if model.startswith(key.split("-202")[0]):
             return p
-    return DEFAULT
+    return _DEFAULT
 
 
-def get_current_model():
-    """Read current model label from settings.json."""
+def get_current_model(fallback=""):
+    """Read current model label from settings.json, fallback to last seen JSONL model."""
     try:
         with open(SETTINGS_FILE) as f:
             model = json.load(f).get("model", "")
     except (FileNotFoundError, json.JSONDecodeError):
         model = ""
+    if not model:
+        model = fallback
     return get_pricing(model)["label"]
 
 
@@ -345,7 +353,7 @@ def main():
         "turns": turn_count,
         "alerts": prev_alerts,
         "context_size": last_ctx,
-        "model": get_current_model(),
+        "model": get_current_model(last_model),
         "split_warned": prev_split_warned,
         "opus_nudge_shown": prev_opus_nudge_shown,
     }
@@ -357,7 +365,7 @@ def main():
 
     ctx_str = f"{last_ctx/1000:.0f}K" if last_ctx < 1e6 else f"{last_ctx/1e6:.1f}M"
     cost_per_turn = total_cost / turn_count if turn_count > 0 else 0
-    model_label = get_current_model()
+    model_label = get_current_model(last_model)
 
     # ─── Hard stop: block further tool use past ceiling (fires every call) ─
     if cfg.get("hard_stop"):
@@ -755,7 +763,13 @@ def main():
 
     state = load_state(session_id)
     if state is None:
-        write_debug("no live state for session", debug_enabled)
+        write_debug("no live state, showing minimal first-call warning", debug_enabled)
+        print(
+            f"\\n\\033[1m\\033[33m[TokenXRay] Agent call — subagents spawn a full context "
+            f"and cost significantly more per task.\\033[0m\\n"
+            f"\\033[2m[TokenXRay] Disable: set subagent_warn=false in ~/.tokenxray/config.json\\033[0m",
+            file=sys.stdout,
+        )
         return
 
     call_count = state.get("subagent_calls", 0) + 1
@@ -982,6 +996,11 @@ def _write_scripts():
         with open(path, "w") as f:
             f.write(code)
         os.chmod(path, 0o755)
+
+    import json as _json
+    pricing_file = DATA_DIR / "pricing.json"
+    with open(pricing_file, "w") as f:
+        _json.dump({"pricing": PRICING, "default": DEFAULT_PRICING}, f, indent=2)
 
 
 def _load_settings():
