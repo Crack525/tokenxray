@@ -1,6 +1,46 @@
 """Formatting helpers for terminal display."""
 
 
+def display_project_name(project: str, max_len: int | None = None) -> str:
+    """Format Claude project slugs into a shorter human-readable label."""
+    display = project
+
+    if project.startswith("-"):
+        parts = [part for part in project.split("-") if part]
+        if "Documents" in parts:
+            parts = parts[parts.index("Documents") + 1:]
+        elif parts[:1] == ["Users"] and len(parts) > 3:
+            parts = parts[3:]
+        if parts:
+            display = "/".join(parts)
+
+    if max_len is not None and len(display) > max_len:
+        display = "..." + display[-(max_len - 3):]
+
+    return display
+
+
+def display_models(models_used, max_items: int = 3) -> str:
+    """Format session models, skipping synthetic placeholders."""
+    from tokenxray.config import get_model_label
+
+    labels = []
+    seen = set()
+
+    for model in sorted(set(models_used)):
+        if model == "<synthetic>":
+            continue
+        label = get_model_label(model)
+        if label not in seen:
+            labels.append(label)
+            seen.add(label)
+
+    if not labels:
+        return "synthetic"
+
+    return ", ".join(labels[:max_items])
+
+
 def fmt_tokens(n: int) -> str:
     if n >= 1_000_000:
         return f"{n / 1_000_000:.1f}M"

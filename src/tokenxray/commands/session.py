@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from tokenxray.colors import C
-from tokenxray.display import fmt_cost, fmt_tokens, bar, duration_str
+from tokenxray.display import fmt_cost, fmt_tokens, bar, duration_str, display_models, display_project_name
 from tokenxray.parser import load_all_sessions
 
 
@@ -32,9 +32,9 @@ def run(args):
     print(f"{C.BOLD}{C.CYAN}TokenXRay — Session Deep Dive{C.RESET}")
     print(f"{C.DIM}{'─' * 70}{C.RESET}")
     print(f"  Session:  {s['full_id']}")
-    print(f"  Project:  {s['project']}")
-    print(f"  Duration: {duration_str(s['start_time'], s['end_time'])}")
-    print(f"  Model:    {', '.join(s['models_used'][:3])}")
+    print(f"  Project:  {display_project_name(s['project'])}")
+    print(f"  Elapsed:  {duration_str(s['start_time'], s['end_time'])}")
+    print(f"  Model:    {display_models(s['models_used'])}")
     print(f"  Turns:    {len(s['turns'])}")
 
     # Cost breakdown

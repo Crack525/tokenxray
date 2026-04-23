@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from tokenxray.display import fmt_tokens, fmt_cost, bar, duration_str
+from tokenxray.display import fmt_tokens, fmt_cost, bar, duration_str, display_project_name, display_models
 
 
 class TestFmtTokens:
@@ -67,3 +67,25 @@ class TestDurationStr:
     def test_none(self):
         assert duration_str(None, None) == "unknown"
         assert duration_str(datetime.now(), None) == "unknown"
+
+
+class TestDisplayProjectName:
+    def test_claude_slug_after_documents(self):
+        project = "-Users-mdniajul-hasan-Documents-DS-WORKSPACE-implant-planning"
+        assert display_project_name(project) == "DS/WORKSPACE/implant/planning"
+
+    def test_truncates_when_max_len_set(self):
+        project = "-Users-mdniajul-hasan-Documents-DS-WORKSPACE-very-long-project-name"
+        display = display_project_name(project, 20)
+        assert display.startswith("...")
+        assert len(display) == 20
+
+
+class TestDisplayModels:
+    def test_skips_synthetic_and_formats_label(self):
+        models = ["<synthetic>", "claude-opus-4-6"]
+        assert display_models(models) == "Opus 4.6"
+
+    def test_multiple_models_are_deduplicated_and_sorted(self):
+        models = ["claude-sonnet-4-6", "claude-opus-4-6", "claude-sonnet-4-6"]
+        assert display_models(models) == "Opus 4.6, Sonnet 4.6"

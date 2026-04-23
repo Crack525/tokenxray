@@ -1,9 +1,9 @@
 """Default overview of all sessions."""
 
 from tokenxray.colors import C
-from tokenxray.display import fmt_cost, fmt_tokens, bar, duration_str
+from tokenxray.display import fmt_cost, fmt_tokens, bar, duration_str, display_project_name
 from tokenxray.config import get_model_label
-from tokenxray.parser import load_all_sessions
+from tokenxray.parser import load_all_sessions, _pick_model
 
 
 def run(args):
@@ -58,7 +58,7 @@ def run(args):
     print(f"  {C.BOLD}Top {min(top_n, len(sessions))} Most Expensive Sessions:{C.RESET}")
     print(
         f"  {C.DIM}{'Session':>12}  {'Project':>25}  {'Turns':>6}  "
-        f"{'Cost':>8}  {'Cache%':>6}  {'Model':>12}  {'Duration':>8}{C.RESET}"
+        f"{'Cost':>8}  {'Cache%':>6}  {'Model':>12}  {'Elapsed':>8}{C.RESET}"
     )
     print(f"  {C.DIM}{'─' * 90}{C.RESET}")
 
@@ -66,19 +66,14 @@ def run(args):
         total_sent = s["total_input"] + s["total_cache_read"] + s["total_cache_create"]
         cache_pct = s["total_cache_read"] / total_sent * 100 if total_sent > 0 else 0
 
-        model_label = "unknown"
-        for m in s["models_used"]:
-            label = get_model_label(m)
-            if label != "unknown":
-                model_label = label
-                break
+        model_label = get_model_label(_pick_model(s["models_used"]))
 
         cost_color = C.RED if s["cost"]["total"] > 50 else (
             C.YELLOW if s["cost"]["total"] > 10 else C.GREEN
         )
 
         print(
-            f"  {s['id']:>12}  {s['project'][:25]:>25}  {len(s['turns']):>6}  "
+            f"  {s['id']:>12}  {display_project_name(s['project'], 25):>25}  {len(s['turns']):>6}  "
             f"{cost_color}{fmt_cost(s['cost']['total']):>8}{C.RESET}  "
             f"{cache_pct:>5.0f}%  {model_label:>12}  "
             f"{duration_str(s['start_time'], s['end_time']):>8}"

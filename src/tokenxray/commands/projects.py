@@ -3,7 +3,7 @@
 from collections import defaultdict
 
 from tokenxray.colors import C
-from tokenxray.display import fmt_cost, bar
+from tokenxray.display import fmt_cost, bar, display_project_name
 from tokenxray.parser import load_all_sessions
 
 
@@ -50,9 +50,7 @@ def run(args):
         share = data["cost"] / total_cost * 100 if total_cost > 0 else 0
         cost_color = C.RED if data["cost"] > 100 else (C.YELLOW if data["cost"] > 10 else C.GREEN)
 
-        display_name = proj.replace("-Users-mdniajul-hasan-Documents-", "")
-        if len(display_name) > 40:
-            display_name = "..." + display_name[-37:]
+        display_name = display_project_name(proj, 40)
 
         print(
             f"  {display_name:>40} {data['sessions']:>8} {data['turns']:>7,} "
