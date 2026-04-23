@@ -10,11 +10,14 @@ from tokenxray.config import CLAUDE_PROJECTS_DIR, GEMINI_SESSIONS_DIR, COPILOT_W
 
 
 def find_session_files(base_path=None):
-    """Find all Claude Code JSONL conversation logs."""
+    """Find all Claude Code JSONL conversation logs, excluding subagent files."""
     path = Path(base_path) if base_path else CLAUDE_PROJECTS_DIR
     if not path.exists():
         return []
-    return sorted(glob.glob(str(path / "**/*.jsonl"), recursive=True))
+    return sorted(
+        f for f in glob.glob(str(path / "**/*.jsonl"), recursive=True)
+        if "subagents" not in Path(f).parts
+    )
 
 
 def find_gemini_session_files():
@@ -415,7 +418,9 @@ def load_all_sessions(base_path=None, include_gemini=True, source_filter=None):
                 if s["turns"]:
                     s["cost"] = calc_cost(s)
                     sessions.append(s)
-            except Exception:
+            except Exception as e:
+                import sys
+                print(f"  [tokenxray] skipped Gemini session {Path(f).name}: {e}", file=sys.stderr)
                 continue
 
     # GitHub Copilot sessions (estimated tokens — no billing data available)
@@ -426,7 +431,9 @@ def load_all_sessions(base_path=None, include_gemini=True, source_filter=None):
                 if s["turns"]:
                     s["cost"] = calc_cost(s)
                     sessions.append(s)
-            except Exception:
+            except Exception as e:
+                import sys
+                print(f"  [tokenxray] skipped Copilot session {Path(f).name}: {e}", file=sys.stderr)
                 continue
 
     return sessions

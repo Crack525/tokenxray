@@ -1081,8 +1081,14 @@ def run(args):
                 "padding": 2,
             }
 
-        with open(SETTINGS_FILE, "w") as f:
-            json.dump(settings, f, indent=2)
+        tmp = SETTINGS_FILE.with_suffix(".json.tmp")
+        try:
+            with open(tmp, "w") as f:
+                json.dump(settings, f, indent=2)
+            os.replace(tmp, SETTINGS_FILE)
+        except Exception:
+            tmp.unlink(missing_ok=True)
+            raise
 
         print(f"  {C.GREEN}{C.BOLD}Hooks + status line installed! Restart Claude Code to activate.{C.RESET}")
     else:
