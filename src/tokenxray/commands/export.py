@@ -1,6 +1,6 @@
 """Export session data as CSV."""
 
-from tokenxray.parser import load_all_sessions
+from tokenxray.parser import load_all_sessions, _pick_model
 
 
 def run(args):
@@ -14,7 +14,7 @@ def run(args):
         dur = ""
         if s["start_time"] and s["end_time"]:
             dur = f"{(s['end_time'] - s['start_time']).total_seconds() / 60:.0f}"
-        model = s["models_used"][0] if s["models_used"] else "unknown"
+        model = _pick_model(s["models_used"]) if s["models_used"] else "unknown"
         source = s.get("source", "claude")
         print(
             f"{s['full_id']},{source},{s['project']},{len(s['turns'])},"

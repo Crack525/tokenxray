@@ -11,7 +11,7 @@
 
 <p align="center"><strong>See where your AI coding tokens actually go.</strong></p>
 
-I spent $104 in a single Claude Code session. Then I audited all 514 of mine and found that **9% of sessions burned 92% of the money** — $11,600 out of $12,600 total. The culprit: context that grows quadratically, cache creation fees nobody mentions, and tool results that ride in context forever.
+I spent $104 in a single Claude Code session. Then I audited all 686 of mine and found that **10% of sessions burned 89% of the money** — $12,560 out of $14,000+ total. The culprit: context that grows quadratically, cache creation fees nobody mentions, and tool results that ride in context forever.
 
 <p align="center">
   <img src="blog/tokenxray-explained.png" alt="TokenXRay — The Problem and Solution" width="800">
@@ -42,6 +42,8 @@ tokenxray --install-hook --confirm   # one-time setup, then forget about it
 ## How It Works
 
 TokenXRay has three layers: a **status line** always visible at the bottom of Claude Code, **hooks** that run automatically, and a **CLI** you run when you want to review your spending.
+
+For Claude Code, session cost is priced per turn using the model actually used on that turn. If a session switches from Opus to Sonnet mid-way, TokenXRay handles that accurately instead of applying one model price to the whole session.
 
 ### Always-on: Status Line
 
@@ -139,13 +141,13 @@ tokenxray --mcp            # MCP tool audit — find dead-weight servers
 ```
 TokenXRay - Session Overview
 ----------------------------------------------------------------------
-  514 sessions    43,000+ total turns    $12,600+ total cost
+  686 sessions    53,952 total turns    $14,044 total cost
 
   Segment Breakdown:
-    1-10 turns:  329 sessions  avg  $0.19   total    $62   ░░░░░░░░░░  0%
-         11-30:   76 sessions  avg  $4.01   total   $305   ░░░░░░░░░░  2%
-        31-100:   61 sessions  avg $11.05   total   $674   █░░░░░░░░░  5%
-          100+:   48 sessions  avg   $241   total $11,600  ████████░░ 92%
+    1-10 turns:  388 sessions  avg  $0.19   total    $74   ░░░░░░░░░░  <1%
+         11-30:  110 sessions  avg  $3.18   total   $350   ░░░░░░░░░░   2%
+        31-100:  117 sessions  avg  $9.08   total $1,062   █░░░░░░░░░   8%
+          100+:   71 sessions  avg   $177   total $12,560  ████████░░  89%
 ```
 
 The retrospective analysis is the most valuable part. After a few `--diagnose` runs, you start naturally scoping sessions better — "I'll do the refactor, then start fresh for tests." That's where the real savings come from.
@@ -232,7 +234,7 @@ Output shows per-server call rates, never-called tools, and a dead-weight estima
 
 ## The Full Story
 
-Read the detailed analysis: [I Spent $104 in a Single AI Coding Session. Then I Audited All 514 of Mine.](blog/i-spent-104-dollars-in-one-ai-session.md)
+Read the detailed analysis: [I Spent $104 in a Single AI Coding Session. Then I Found Where $8,000 Disappeared.](blog/i-spent-104-dollars-in-one-ai-session.md)
 
 ## License
 
