@@ -1,5 +1,13 @@
 # TokenXRay Changelog
 
+## v0.3.20 — 2026-04-23 · doctor cost fix
+
+- Fix `tokenxray --doctor` showing `$0.0000` for live session cost. Hook writes
+  `total_cost` key; doctor was reading `cost`. Now reads `total_cost` with `cost`
+  as fallback for backward compatibility.
+
+---
+
 ## v0.3.19 — 2026-04-23 · `tokenxray --doctor`
 
 New diagnosis-only command that audits installation health in one shot:
