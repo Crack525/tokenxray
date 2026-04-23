@@ -97,6 +97,13 @@ def write_debug(message, enabled=False):
         pass
 
 
+_HOOK_MARKERS = ("\\nRan ", "\\nRead skill [", "Completed with input:", "tool_result")
+
+
+def _is_hook_injected(text):
+    return any(m in text for m in _HOOK_MARKERS)
+
+
 def extract_checkpoint(jsonl_path):
     """Extract working state from session JSONL for auto-checkpoint."""
     user_messages = []
@@ -122,6 +129,8 @@ def extract_checkpoint(jsonl_path):
                 entry_type = entry.get("type", "")
 
                 if entry_type == "user":
+                    if entry.get("agentId"):
+                        continue
                     if not cwd:
                         cwd = entry.get("cwd")
                         git_branch = entry.get("gitBranch")
@@ -129,13 +138,13 @@ def extract_checkpoint(jsonl_path):
                     msg = entry.get("message", {})
                     content = msg.get("content", "")
                     if isinstance(content, str) and len(content) > 10:
-                        if not content.startswith("<") and "tool_result" not in content:
+                        if not content.startswith("<") and not _is_hook_injected(content):
                             user_messages.append(content[:500])
                     elif isinstance(content, list):
                         for block in content:
                             if isinstance(block, dict) and block.get("type") == "text":
                                 text = block.get("text", "")
-                                if len(text) > 10 and not text.startswith("<"):
+                                if len(text) > 10 and not text.startswith("<") and not _is_hook_injected(text):
                                     user_messages.append(text[:500])
                                     break
 

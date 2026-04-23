@@ -11,6 +11,14 @@ from tokenxray.config import CLAUDE_PROJECTS_DIR, DATA_DIR
 GLOBAL_CHECKPOINT = DATA_DIR / "checkpoint.md"
 
 
+# Patterns injected by hooks/skills into user-type JSONL entries — not real user intent
+_HOOK_MARKERS = ("\nRan ", "\nRead skill [", "Completed with input:", "tool_result")
+
+
+def _is_hook_injected(text):
+    return any(m in text for m in _HOOK_MARKERS)
+
+
 def extract_checkpoint(jsonl_path):
     """Extract working state from a session JSONL file.
 
@@ -39,6 +47,10 @@ def extract_checkpoint(jsonl_path):
             entry_type = entry.get("type", "")
 
             if entry_type == "user":
+                # Skip subagent entries — they belong to a spawned agent, not the user
+                if entry.get("agentId"):
+                    continue
+
                 if not cwd:
                     cwd = entry.get("cwd")
                     git_branch = entry.get("gitBranch")
@@ -47,13 +59,13 @@ def extract_checkpoint(jsonl_path):
                 msg = entry.get("message", {})
                 content = msg.get("content", "")
                 if isinstance(content, str) and len(content) > 10:
-                    if not content.startswith("<") and "tool_result" not in content:
+                    if not content.startswith("<") and not _is_hook_injected(content):
                         user_messages.append(content[:500])
                 elif isinstance(content, list):
                     for block in content:
                         if isinstance(block, dict) and block.get("type") == "text":
                             text = block.get("text", "")
-                            if len(text) > 10 and not text.startswith("<"):
+                            if len(text) > 10 and not text.startswith("<") and not _is_hook_injected(text):
                                 user_messages.append(text[:500])
                                 break
 
@@ -189,19 +201,47 @@ def format_checkpoint(checkpoint):
 
 
 def _find_latest_session(path=None):
-    """Find the most recently modified JSONL session file."""
+    """Find the most recently modified JSONL session file.
+
+    When no explicit path is given, prefers the project directory that matches
+    the current working directory (by slug). Falls back to a global search
+    across all projects. Subagent JSONL files are excluded in all cases.
+    """
     projects_dir = Path(path) if path else CLAUDE_PROJECTS_DIR
     if not projects_dir.exists():
         return None
 
-    latest = None
-    latest_mtime = 0
+    def _is_subagent(p: Path) -> bool:
+        return "subagents" in p.parts
+
+    # Without an explicit path, try to find the JSONL for the current project first.
+    # Claude Code stores sessions at ~/.claude/projects/<cwd-slug>/<session-id>.jsonl
+    # where the slug is the cwd with '/' replaced by '-'.
+    if path is None:
+        cwd_slug = os.getcwd().replace("/", "-")
+        project_dir = projects_dir / cwd_slug
+        if project_dir.is_dir():
+            best = None
+            best_mtime = 0
+            for jsonl in project_dir.glob("*.jsonl"):  # non-recursive: no subagents
+                mtime = jsonl.stat().st_mtime
+                if mtime > best_mtime:
+                    best_mtime = mtime
+                    best = jsonl
+            if best:
+                return best
+
+    # Fallback: global search, skipping subagent paths
+    best = None
+    best_mtime = 0
     for jsonl in projects_dir.rglob("*.jsonl"):
+        if _is_subagent(jsonl):
+            continue
         mtime = jsonl.stat().st_mtime
-        if mtime > latest_mtime:
-            latest_mtime = mtime
-            latest = jsonl
-    return latest
+        if mtime > best_mtime:
+            best_mtime = mtime
+            best = jsonl
+    return best
 
 
 def run(args):
@@ -219,6 +259,13 @@ def run(args):
     print(f"  Extracting from: {C.DIM}{jsonl_path.name}{C.RESET}")
 
     checkpoint = extract_checkpoint(str(jsonl_path))
+
+    if not checkpoint.get("session_id"):
+        print(f"  {C.YELLOW}Warning: no session identity found in {jsonl_path.name}.{C.RESET}")
+        print(f"  {C.YELLOW}This may be a subagent or system-only JSONL — not a user session.{C.RESET}")
+        print(f"  {C.DIM}Try running from the project directory or after at least one full turn.{C.RESET}")
+        print()
+        return
 
     # Count turns/cost from the JSONL for stats
     total_cost = 0.0
