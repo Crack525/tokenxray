@@ -8,8 +8,7 @@ from pathlib import Path
 
 from tokenxray.colors import C
 from tokenxray.display import fmt_cost, fmt_tokens, bar
-from tokenxray.parser import load_all_sessions, _pick_model
-from tokenxray.config import calc_cost
+from tokenxray.parser import load_all_sessions
 
 # Approximate tokens per tool schema (based on real measurements: ~15K tokens / 84 tools)
 TOKENS_PER_TOOL_SCHEMA = 185
