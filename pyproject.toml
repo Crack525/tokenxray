@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tokenxray"
-version = "0.3.15"
+version = "0.3.16"
 description = "See where your AI coding tokens actually go. Analyze Claude Code session costs, find token bombs, and track spending."
 readme = "README.md"
 license = "MIT"
@@ -38,6 +38,9 @@ tokenxray = "tokenxray.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+tokenxray = ["assets/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

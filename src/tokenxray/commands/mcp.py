@@ -8,12 +8,11 @@ from pathlib import Path
 
 from tokenxray.colors import C
 from tokenxray.display import fmt_cost, fmt_tokens, bar
-from tokenxray.parser import load_all_sessions
+from tokenxray.parser import load_all_sessions, _pick_model
+from tokenxray.config import calc_cost
 
 # Approximate tokens per tool schema (based on real measurements: ~15K tokens / 84 tools)
 TOKENS_PER_TOOL_SCHEMA = 185
-# Sonnet input price per million tokens
-SONNET_INPUT_PRICE = 3.0
 
 
 def _read_mcp_servers():
@@ -89,6 +88,15 @@ def _enumerate_server_tools(server_config, timeout=5):
                 pass
 
 
+def _avg_input_price(sessions) -> float:
+    """Return average input price ($/MTok) across sessions, or Sonnet default if unknown."""
+    total_cost = sum(s.get("cost", {}).get("input", 0.0) for s in sessions)
+    total_tokens = sum(s.get("total_input", 0) for s in sessions)
+    if total_tokens > 0:
+        return total_cost / total_tokens * 1e6
+    return 3.0  # Sonnet default fallback
+
+
 def run(args):
     sessions = load_all_sessions(args.path, source_filter="claude")
     if not sessions:
@@ -97,6 +105,8 @@ def run(args):
 
     mcp_servers = _read_mcp_servers()
     enumerate_tools = getattr(args, "enumerate_tools", False)
+
+    avg_input_price = _avg_input_price(sessions)
 
     # Aggregate tool usage across all sessions
     server_tool_calls = defaultdict(lambda: defaultdict(int))  # server -> tool -> total calls
@@ -146,17 +156,17 @@ def run(args):
                 server_available_tools[server_name] = tools
 
     _display(sessions, mcp_servers, server_tool_calls, server_session_count,
-             sessions_with_any_mcp, server_available_tools)
+             sessions_with_any_mcp, server_available_tools, avg_input_price)
 
 
 def _display(sessions, mcp_servers, server_tool_calls, server_session_count,
-             sessions_with_any_mcp, server_available_tools):
+             sessions_with_any_mcp, server_available_tools, avg_input_price=3.0):
     total = len(sessions)
     zero_mcp = total - sessions_with_any_mcp
     all_servers = sorted(set(list(mcp_servers.keys()) + list(server_tool_calls.keys())))
 
     print()
-    print(f"{C.BOLD}{C.CYAN}TokenXRay — MCP Tool Audit{C.RESET}")
+    print(f"{C.BOLD}{C.CYAN}TokenXRay — MCP Tool Audit{C.RESET}  {C.DIM}(Claude Code sessions only){C.RESET}")
     print(f"{C.DIM}{'─' * 70}{C.RESET}")
     print(
         f"  Configured servers: {C.BOLD}{len(mcp_servers)}{C.RESET}  |  "
@@ -185,7 +195,7 @@ def _display(sessions, mcp_servers, server_tool_calls, server_session_count,
         total_est = sum(est_tools.values())
         tokens_per_session = total_est * TOKENS_PER_TOOL_SCHEMA
         wasted_tokens = zero_mcp * tokens_per_session
-        wasted_cost = (wasted_tokens / 1e6) * SONNET_INPUT_PRICE
+        wasted_cost = (wasted_tokens / 1e6) * avg_input_price
 
         note = "" if server_available_tools else f"  {C.DIM}(tool count from call history — run --enumerate-tools for exact count){C.RESET}"
         print(
@@ -289,7 +299,7 @@ def _display(sessions, mcp_servers, server_tool_calls, server_session_count,
         dead_count = len([t for t in avail if t not in called])
         if dead_count > 0:
             savings_tokens = dead_count * TOKENS_PER_TOOL_SCHEMA * total
-            savings_cost = (savings_tokens / 1e6) * SONNET_INPUT_PRICE
+            savings_cost = (savings_tokens / 1e6) * avg_input_price
             print(
                 f"  {C.BLUE}[!  ]{C.RESET} {server_name}: {dead_count} tools never called.\n"
                 f"        Removing them would save ~{fmt_tokens(savings_tokens)} tokens "

@@ -1,5 +1,6 @@
 """Interactive HTML dashboard with charts and recommendations."""
 
+import importlib.resources
 import json
 import webbrowser
 from collections import defaultdict
@@ -9,6 +10,16 @@ from pathlib import Path
 from tokenxray.colors import C
 from tokenxray.config import get_model_label
 from tokenxray.parser import load_all_sessions
+
+
+def _chart_js() -> str:
+    """Return the vendored Chart.js UMD bundle (offline-safe)."""
+    try:
+        pkg = importlib.resources.files("tokenxray") / "assets" / "chart.umd.min.js"
+        return pkg.read_text(encoding="utf-8")
+    except Exception:
+        # Fallback to CDN if asset is somehow missing
+        return ""  # caller handles empty string
 
 
 def run(args):
@@ -342,14 +353,19 @@ def _generate_recommendations(sessions, total_cost):
 
 
 def _render_html(data):
-    data_json = json.dumps(data)
+    # P10: escape </script> to prevent premature tag close in embedded JSON
+    data_json = json.dumps(data).replace("</", "<\\/")
+    chart_js = _chart_js()
+    chart_script_tag = f"<script>{chart_js}</script>" if chart_js else (
+        '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>'
+    )
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TokenXRay Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+{chart_script_tag}
 <style>
   :root {{
     --bg: #0d1117; --surface: #161b22; --border: #30363d;
@@ -691,13 +707,22 @@ new Chart(document.getElementById('projectCost'), {{
   const tbody = document.getElementById('topSessionsBody');
   D.top_sessions.forEach(s => {{
     const cls = s.cost > 500 ? 'cost-high' : s.cost > 50 ? 'cost-med' : 'cost-low';
-    tbody.innerHTML += `<tr>
-      <td style="font-family: monospace;">${{s.id}}</td>
-      <td>${{s.project}}</td>
-      <td>${{s.turns.toLocaleString()}}</td>
-      <td class="${{cls}}">${{s.cost.toLocaleString()}}</td>
-      <td>${{s.model}}</td>
-    </tr>`;
+    const tr = document.createElement('tr');
+    const cells = [
+      [s.id, 'font-family:monospace', null],
+      [s.project, null, null],
+      [s.turns.toLocaleString(), null, null],
+      ['$' + s.cost.toLocaleString(), null, cls],
+      [s.model, null, null],
+    ];
+    cells.forEach(([text, style, className]) => {{
+      const td = document.createElement('td');
+      td.textContent = text;
+      if (style) td.setAttribute('style', style);
+      if (className) td.className = className;
+      tr.appendChild(td);
+    }});
+    tbody.appendChild(tr);
   }});
 }})();
 
@@ -705,18 +730,29 @@ new Chart(document.getElementById('projectCost'), {{
 (function() {{
   const container = document.getElementById('recsContainer');
   if (D.recommendations.length === 0) {{
-    container.innerHTML = '<div class="card"><p style="color: var(--green);">No major issues found. Your token usage looks healthy!</p></div>';
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = '<p style="color: var(--green);">No major issues found. Your token usage looks healthy!</p>';
+    container.appendChild(card);
     return;
   }}
   D.recommendations.forEach(r => {{
-    let savings = '';
-    if (r.savings > 0) savings = `<div class="rec-savings">Potential savings: ~$${{r.savings.toLocaleString()}}</div>`;
-    container.innerHTML += `<div class="card rec-card ${{r.severity}}">
-      <div class="rec-title">${{r.title}}</div>
-      <div class="rec-detail">${{r.detail}}</div>
-      <div class="rec-action">${{r.action}}</div>
-      ${{savings}}
-    </div>`;
+    const card = document.createElement('div');
+    card.className = `card rec-card ${{r.severity}}`;
+    const title = document.createElement('div');
+    title.className = 'rec-title'; title.textContent = r.title;
+    const detail = document.createElement('div');
+    detail.className = 'rec-detail'; detail.textContent = r.detail;
+    const action = document.createElement('div');
+    action.className = 'rec-action'; action.textContent = r.action;
+    card.appendChild(title); card.appendChild(detail); card.appendChild(action);
+    if (r.savings > 0) {{
+      const sav = document.createElement('div');
+      sav.className = 'rec-savings';
+      sav.textContent = `Potential savings: ~$${{r.savings.toLocaleString()}}`;
+      card.appendChild(sav);
+    }}
+    container.appendChild(card);
   }});
 }})();
 </script>

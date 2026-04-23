@@ -72,4 +72,6 @@ def duration_str(start, end) -> str:
     hours = delta.total_seconds() / 3600
     if hours < 1:
         return f"{delta.total_seconds() / 60:.0f}min"
+    if hours > 24:
+        return ">1d"
     return f"{hours:.1f}hrs"
