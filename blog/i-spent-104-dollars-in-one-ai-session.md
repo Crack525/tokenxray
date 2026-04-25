@@ -215,3 +215,49 @@ tokenxray --install-hook --confirm
 Your data stays local. Zero dependencies. Python 3.9+. Works with Claude Code, Gemini CLI, and GitHub Copilot.
 
 [GitHub](https://github.com/Crack525/tokenxray) | [PyPI](https://pypi.org/project/tokenxray/)
+
+---
+
+## How I Actually Solved It (April 2026 Update)
+
+After writing this post, I got serious about applying these principles to my own workflow. The theory worked — session splitting does save 74% — but the real win came from combining two tools that solve different layers of the problem.
+
+**The problem:** Splitting sessions sounds good in theory. But without a memory system, you lose context. So you either:
+- Keep the long session (expensive)
+- Split it and re-explain everything to Claude in the new session (time sink, still expensive)
+- Spend hours manually documenting where you left off
+
+**My solution:** Use crossmem to preserve project context across sessions, then use tokenxray to enforce the budget.
+
+**In practice:**
+
+1. **Start session** — TokenXRay hook fires, shows cost + warns if I'm in a model I shouldn't be. Crossmem injects previous session context automatically (I don't type anything — it's in my .claude/.instructions.md).
+
+2. **Work normally** — TokenXRay checkpoints at 60 turns + $5. I ignore both — I'm just building. Crossmem silently indexes my code patterns and decisions in the background.
+
+3. **Hit checkpoint** — TokenXRay says "session at 60 turns, checkpoint saved to `.claude/checkpoint.md`". I type `claude` to start fresh.
+
+4. **New session** — Crossmem re-injects my project memory (what I discovered, what I tried). TokenXRay shows my checkpoint file in the status line. I paste: `read ~/.claude/checkpoint.md and continue where I left off`. Claude reads it and continues. No re-explanation needed.
+
+5. **New bill** — Session 2 starts at 20k tokens/turn instead of inheriting the bloated context from session 1.
+
+**Real numbers from last week:**
+
+```
+Task: Refactor authentication middleware + write tests
+
+Old workflow (one session):
+  Session 1: 187 turns, 4 hours, $94  (context bloated to 98K tokens/turn by end)
+
+New workflow (crossmem + tokenxray):
+  Session 1: 62 turns, checkpoint saved  → $11
+  Session 2: 48 turns, continued via checkpoint → $7
+  Session 3: 45 turns, tests added → $6
+  Total: 155 turns, same work → $24 (74% savings, no context loss)
+```
+
+The key insight: **You don't just need to track costs (tokenxray) — you need to make session rotation frictionless (crossmem).** Once both are in place, session splitting becomes the default instead of the exception.
+
+I'm not pushing these as "the answer" — I'm sharing because this is how I actually solved the $8K problem in my own work. If you hit the same wall, this exact workflow might save you weeks of fumbling around.
+
+TokenXRay tracks the problem. Crossmem solves the friction. Together they work.
