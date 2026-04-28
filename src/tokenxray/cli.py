@@ -51,13 +51,21 @@ def main():
         action="store_true",
         help="Print generated rules to stdout without writing CLAUDE.md",
     )
+    parser.add_argument(
+        "--crossmem-impact",
+        action="store_true",
+        help="Compare token spend before/after crossmem installation",
+    )
 
     args = parser.parse_args()
 
     if args.no_color:
         C.disable()
 
-    if args.rules or args.rules_dry_run:
+    if args.crossmem_impact:
+        from tokenxray.commands.crossmem_impact import run
+        run(args)
+    elif args.rules or args.rules_dry_run:
         from tokenxray.commands.rules import run
         run(args)
     elif args.doctor:
