@@ -41,13 +41,34 @@ def main():
                         version=f"tokenxray {__version__} · pricing updated {PRICING_LAST_UPDATED}",
                         help="Show version and exit")
     parser.add_argument("--no-color", action="store_true", help="Disable colored output")
+    parser.add_argument(
+        "--rules",
+        action="store_true",
+        help="Generate personalized CLAUDE.md rules from your session history",
+    )
+    parser.add_argument(
+        "--rules-dry-run",
+        action="store_true",
+        help="Print generated rules to stdout without writing CLAUDE.md",
+    )
+    parser.add_argument(
+        "--crossmem-impact",
+        action="store_true",
+        help="Compare token spend before/after crossmem installation",
+    )
 
     args = parser.parse_args()
 
     if args.no_color:
         C.disable()
 
-    if args.doctor:
+    if args.crossmem_impact:
+        from tokenxray.commands.crossmem_impact import run
+        run(args)
+    elif args.rules or args.rules_dry_run:
+        from tokenxray.commands.rules import run
+        run(args)
+    elif args.doctor:
         from tokenxray.commands.doctor import run
         run(args)
     elif args.mcp:

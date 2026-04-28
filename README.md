@@ -24,7 +24,10 @@ I spent $104 in a single Claude Code session. Then I audited all 686 of mine and
       <sub><b>CLI</b> — overview · session drill-down · diagnose</sub>
     </td>
     <td align="center" width="50%">
-      <img src="demo/demo-session.gif" alt="TokenXRay status line — live hints in Claude Code"/><br/>
+      <video width="100%" autoplay loop muted playsinline>
+        <source src="demo/demo-session.mp4" type="video/mp4">
+        <img src="demo/demo-session.gif" alt="TokenXRay status line — live hints in Claude Code"/>
+      </video>
       <sub><b>Status line</b> — live cost + hints in every Claude Code session</sub>
     </td>
   </tr>

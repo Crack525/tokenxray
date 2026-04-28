@@ -27,8 +27,24 @@ def run(args):
     _display(sessions, total_cost, recommendations)
 
 
+def _marathon_threshold(sessions: list) -> int:
+    """Compute a personalized marathon threshold from the user's own session history.
+
+    Uses 2× the 75th-percentile turn count so the threshold adapts to the user's
+    natural rhythm rather than a hardcoded number. Minimum of 30 and minimum 5
+    sessions required; falls back to 100 for sparse histories.
+    """
+    turn_counts = sorted(len(s["turns"]) for s in sessions)
+    if len(turn_counts) < 5:
+        return 100
+    p75_index = int(len(turn_counts) * 0.75)
+    p75 = turn_counts[p75_index]
+    return max(int(p75 * 2), 30)
+
+
 def _check_marathons(sessions, total_cost, recs):
-    marathons = [s for s in sessions if len(s["turns"]) > 100]
+    threshold = _marathon_threshold(sessions)
+    marathons = [s for s in sessions if len(s["turns"]) > threshold]
     marathon_cost = sum(s["cost"]["total"] for s in marathons)
     if marathons and total_cost > 0 and marathon_cost / total_cost > 0.5:
         avg_turns = sum(len(s["turns"]) for s in marathons) / len(marathons)
@@ -37,7 +53,7 @@ def _check_marathons(sessions, total_cost, recs):
             "severity": "critical",
             "title": "Marathon sessions are burning your wallet",
             "detail": (
-                f"{len(marathons)} sessions with 100+ turns cost {fmt_cost(marathon_cost)} "
+                f"{len(marathons)} sessions with {threshold}+ turns cost {fmt_cost(marathon_cost)} "
                 f"({marathon_cost / total_cost * 100:.0f}% of total). Avg: {avg_turns:.0f} turns."
             ),
             "action": (
