@@ -1,4 +1,5 @@
 """Diagnose TokenXRay installation health — read-only, no writes."""
+from __future__ import annotations
 
 import json
 import platform

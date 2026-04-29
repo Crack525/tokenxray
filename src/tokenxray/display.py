@@ -1,4 +1,5 @@
 """Formatting helpers for terminal display."""
+from __future__ import annotations
 
 
 def display_project_name(project: str, max_len: int | None = None) -> str:

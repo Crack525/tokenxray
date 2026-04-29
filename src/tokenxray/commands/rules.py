@@ -1,4 +1,5 @@
 """Generate personalized CLAUDE.md rules from your own session data."""
+from __future__ import annotations
 
 from pathlib import Path
 
