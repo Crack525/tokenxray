@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.9", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e . pytest
+      - run: python -m pytest tests/ -v --tb=short
+
+  publish:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Verify tag matches pyproject version
+        run: |
+          python - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
+
+          version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+          tag = os.environ["GITHUB_REF_NAME"]
+          expected_tag = f"v{version}"
+
+          if tag != expected_tag:
+              raise SystemExit(
+                  f"Refusing publish: git tag is {tag}, but pyproject version is {version} (expected {expected_tag})."
+              )
+          PY
+      - run: uv build
+      - uses: pypa/gh-action-pypi-publish@release/v1
