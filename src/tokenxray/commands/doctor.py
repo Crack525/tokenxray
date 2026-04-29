@@ -208,7 +208,8 @@ def run(_args=None) -> None:
     for source, (count, newest) in _session_counts().items():
         if count > 0:
             age_info = f", newest {_age_str(newest)}" if newest else ""
-            print(f"  {_ok(f'{source:<8} {count} session{'' if count == 1 else 's'}{age_info}')}")
+            plural = "" if count == 1 else "s"
+            print(f"  {_ok(f'{source:<8} {count} session{plural}{age_info}')}")
             src_results.append(True)
         else:
             print(f"  {_warn(f'{source:<8} no sessions found')}")
