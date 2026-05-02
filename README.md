@@ -9,7 +9,7 @@
   <a href="https://github.com/Crack525/tokenxray/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/tokenxray" alt="License"></a>
 </p>
 
-<p align="center"><strong>See where your AI coding tokens actually go.</strong></p>
+<p align="center"><strong>Claude Code has no spending ceiling. TokenXRay adds one.</strong></p>
 
 I spent $104 in a single Claude Code session. Then I audited all 686 of mine and found that **10% of sessions burned 89% of the money** — $12,560 out of $14,000+ total. The culprit: context that grows quadratically, cache creation fees nobody mentions, and tool results that ride in context forever.
 
@@ -44,9 +44,37 @@ tokenxray --install-hook --confirm   # one-time setup, then forget about it
 
 ## How It Works
 
-TokenXRay has three layers: a **status line** always visible at the bottom of Claude Code, **hooks** that run automatically, and a **CLI** you run when you want to review your spending.
+TokenXRay has three layers: a **status line** always visible at the bottom of Claude Code, **hooks** that run automatically after every tool call, and a **CLI** you run when you want to review spending patterns.
 
-For Claude Code, session cost is priced per turn using the model actually used on that turn. If a session switches from Opus to Sonnet mid-way, TokenXRay handles that accurately instead of applying one model price to the whole session.
+### The ceiling: hard-stop mode
+
+No other Claude Code tool will forcibly halt a runaway session. TokenXRay can. When `hard_stop` is enabled in config, the hook exits with code 2 after every tool call once a ceiling is crossed — Claude Code cannot continue until you start a fresh session.
+
+Enable it once:
+
+```json
+{"hard_stop": true, "hard_stop_turns": 120, "hard_stop_cost": 10}
+```
+
+When the ceiling hits, every tool call fires this in the conversation:
+
+```
+[TokenXRay] HARD STOP — cost limit ($10.43/$10) reached. Session blocked.
+Please wrap up and start a fresh session.
+Checkpoint was auto-saved earlier. Disable with: hard_stop=false in ~/.tokenxray/config.json
+```
+
+Claude Code stops. The session cost stops. Off by default — enable only if you want a hard ceiling. The advisory split warning fires regardless.
+
+### Always-on: live alerting
+
+The hook fires after every tool call. When you cross a cost threshold, you see it immediately in the conversation — no checking required:
+
+```
+[TokenXRay] $3.14 spent (crossed $3) — Sonnet 4.6, 28 turns, ctx 42K, ~$0.11/turn
+```
+
+Default thresholds: `$1, $3, $5, $10, $25, $50`. Fully configurable. Alerts fire once per threshold per session and don't repeat.
 
 ### Always-on: Status Line
 
@@ -119,14 +147,6 @@ You never run `tokenxray` during a session. The hooks and status line handle it.
 [TokenXRay] Consider splitting this session! (60 turns, $5.20, ctx 90K)
 [TokenXRay] Auto-checkpoint saved to .claude/checkpoint.md
 ```
-
-**Hard-stop mode** (opt-in): block further tool use past a ceiling so Claude is forced to wrap up. Enable in `~/.tokenxray/config.json`:
-
-```json
-{"hard_stop": true, "hard_stop_turns": 120, "hard_stop_cost": 50}
-```
-
-When either ceiling is crossed, the hook exits with code 2. Every subsequent tool call fails with the hard-stop message until you start a fresh session. Off by default — the advisory split warning still fires regardless.
 
 ### Weekly: CLI (manual review)
 
