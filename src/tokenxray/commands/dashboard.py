@@ -4,7 +4,7 @@ import importlib.resources
 import json
 import webbrowser
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from tokenxray.colors import C
@@ -49,9 +49,17 @@ def _collect_data(sessions):
     total_no_cache = sum(s["cost"]["total_no_cache"] for s in sessions)
 
     # --- Daily cost trend ---
-    daily = defaultdict(lambda: {"cost": 0, "sessions": 0, "turns": 0,
-                                  "input_cost": 0, "output_cost": 0,
-                                  "cache_read_cost": 0, "cache_create_cost": 0})
+    daily = defaultdict(
+        lambda: {
+            "cost": 0,
+            "sessions": 0,
+            "turns": 0,
+            "input_cost": 0,
+            "output_cost": 0,
+            "cache_read_cost": 0,
+            "cache_create_cost": 0,
+        }
+    )
     for s in sessions:
         if s.get("start_time"):
             day = s["start_time"].strftime("%Y-%m-%d")
@@ -71,7 +79,8 @@ def _collect_data(sessions):
         "turns": [daily[d]["turns"] for d in sorted_days],
         "cost_per_turn": [
             round(daily[d]["cost"] / daily[d]["turns"], 2)
-            if daily[d]["turns"] > 0 else 0
+            if daily[d]["turns"] > 0
+            else 0
             for d in sorted_days
         ],
     }
@@ -80,7 +89,7 @@ def _collect_data(sessions):
     ma7 = []
     costs = daily_series["cost"]
     for i in range(len(costs)):
-        window = costs[max(0, i - 6):i + 1]
+        window = costs[max(0, i - 6) : i + 1]
         ma7.append(round(sum(window) / len(window), 2))
     daily_series["ma7"] = ma7
 
@@ -107,17 +116,17 @@ def _collect_data(sessions):
     for s in sessions:
         label = "Unknown"
         for m in s.get("models_used", []):
-            l = get_model_label(m)
-            if l != "unknown":
-                label = l
+            lbl = get_model_label(m)
+            if lbl != "unknown":
+                label = lbl
                 break
         model_cost[label] += s["cost"]["total"]
         model_sessions[label] += 1
 
     model_dist = {
         "labels": list(model_cost.keys()),
-        "cost": [round(model_cost[l], 2) for l in model_cost],
-        "sessions": [model_sessions[l] for l in model_cost],
+        "cost": [round(model_cost[lbl], 2) for lbl in model_cost],
+        "sessions": [model_sessions[lbl] for lbl in model_cost],
     }
 
     # --- Project breakdown (top 15) ---
@@ -159,7 +168,9 @@ def _collect_data(sessions):
         hit_rate = (dd["cache_read_cost"] / total_in * 100) if total_in > 0 else 0
         cache_series["labels"].append(d)
         cache_series["hit_rate"].append(round(hit_rate, 1))
-        cache_series["savings"].append(round(dd["input_cost"] - dd["cache_read_cost"], 2))
+        cache_series["savings"].append(
+            round(dd["input_cost"] - dd["cache_read_cost"], 2)
+        )
 
     # --- Session heatmap (day of week × hour) ---
     heatmap = [[0] * 24 for _ in range(7)]
@@ -173,7 +184,9 @@ def _collect_data(sessions):
     for dow in range(7):
         for hour in range(24):
             if heatmap[dow][hour] > 0:
-                heatmap_data.append({"x": hour, "y": dow, "v": round(heatmap[dow][hour], 2)})
+                heatmap_data.append(
+                    {"x": hour, "y": dow, "v": round(heatmap[dow][hour], 2)}
+                )
 
     # --- Top 10 expensive sessions ---
     top_sessions = []
@@ -184,17 +197,19 @@ def _collect_data(sessions):
             p = parts[-1] if len(parts) > 1 else p
         model_label = "unknown"
         for m in s.get("models_used", []):
-            l = get_model_label(m)
-            if l != "unknown":
-                model_label = l
+            lbl = get_model_label(m)
+            if lbl != "unknown":
+                model_label = lbl
                 break
-        top_sessions.append({
-            "id": s["id"],
-            "project": p,
-            "turns": len(s["turns"]),
-            "cost": round(s["cost"]["total"], 2),
-            "model": model_label,
-        })
+        top_sessions.append(
+            {
+                "id": s["id"],
+                "project": p,
+                "turns": len(s["turns"]),
+                "cost": round(s["cost"]["total"], 2),
+                "model": model_label,
+            }
+        )
 
     # --- Cost breakdown by type ---
     cost_breakdown = {
@@ -226,7 +241,8 @@ def _collect_data(sessions):
         "sessions": [weekly[w]["sessions"] for w in sorted_weeks],
         "cost_per_turn": [
             round(weekly[w]["cost"] / weekly[w]["turns"], 2)
-            if weekly[w]["turns"] > 0 else 0
+            if weekly[w]["turns"] > 0
+            else 0
             for w in sorted_weeks
         ],
     }
@@ -242,9 +258,15 @@ def _collect_data(sessions):
             "total_cache_read": total_cache_read,
             "total_cache_create": total_cache_create,
             "cache_savings": round(total_saved, 2),
-            "cache_savings_pct": round(total_saved / total_no_cache * 100, 1) if total_no_cache > 0 else 0,
-            "avg_cost_per_turn": round(total_cost / total_turns, 2) if total_turns > 0 else 0,
-            "avg_cost_per_session": round(total_cost / len(sessions), 2) if sessions else 0,
+            "cache_savings_pct": round(total_saved / total_no_cache * 100, 1)
+            if total_no_cache > 0
+            else 0,
+            "avg_cost_per_turn": round(total_cost / total_turns, 2)
+            if total_turns > 0
+            else 0,
+            "avg_cost_per_session": round(total_cost / len(sessions), 2)
+            if sessions
+            else 0,
         },
         "daily": daily_series,
         "weekly": weekly_series,
@@ -269,32 +291,36 @@ def _generate_recommendations(sessions, total_cost):
     if marathons and total_cost > 0 and marathon_cost / total_cost > 0.5:
         avg_turns = sum(len(s["turns"]) for s in marathons) / len(marathons)
         savings = marathon_cost * 0.30
-        recs.append({
-            "severity": "critical",
-            "title": "Marathon sessions are burning your wallet",
-            "detail": (
-                f"{len(marathons)} sessions with 100+ turns cost "
-                f"${marathon_cost:,.0f} ({marathon_cost / total_cost * 100:.0f}% of total). "
-                f"Average: {avg_turns:.0f} turns per session."
-            ),
-            "action": f"Split sessions at 50-80 turns. Potential savings: ~${savings:,.0f}.",
-            "savings": round(savings, 0),
-        })
+        recs.append(
+            {
+                "severity": "critical",
+                "title": "Marathon sessions are burning your wallet",
+                "detail": (
+                    f"{len(marathons)} sessions with 100+ turns cost "
+                    f"${marathon_cost:,.0f} ({marathon_cost / total_cost * 100:.0f}% of total). "
+                    f"Average: {avg_turns:.0f} turns per session."
+                ),
+                "action": f"Split sessions at 50-80 turns. Potential savings: ~${savings:,.0f}.",
+                "savings": round(savings, 0),
+            }
+        )
 
     # Cache creation
     total_cc = sum(s["cost"]["cache_create"] for s in sessions)
     cc_pct = total_cc / total_cost * 100 if total_cost > 0 else 0
     if cc_pct > 30:
-        recs.append({
-            "severity": "high",
-            "title": f"Cache creation is {cc_pct:.0f}% of total cost",
-            "detail": (
-                f"${total_cc:,.0f} in cache creation fees (25% premium over input). "
-                f"Triggered whenever new content enters context."
-            ),
-            "action": "Shorter prompts, partial file reads, concise responses reduce cache creation.",
-            "savings": round(total_cc * 0.20, 0),
-        })
+        recs.append(
+            {
+                "severity": "high",
+                "title": f"Cache creation is {cc_pct:.0f}% of total cost",
+                "detail": (
+                    f"${total_cc:,.0f} in cache creation fees (25% premium over input). "
+                    f"Triggered whenever new content enters context."
+                ),
+                "action": "Shorter prompts, partial file reads, concise responses reduce cache creation.",
+                "savings": round(total_cc * 0.20, 0),
+            }
+        )
 
     # Model choice
     opus = [s for s in sessions if any("opus" in m for m in s["models_used"])]
@@ -303,16 +329,18 @@ def _generate_recommendations(sessions, total_cost):
         sonnet_eq = opus_cost / 5
         savings = opus_cost - sonnet_eq
         if savings > 10:
-            recs.append({
-                "severity": "medium",
-                "title": f"Opus is {opus_cost / total_cost * 100:.0f}% of spend",
-                "detail": (
-                    f"${opus_cost:,.0f} on Opus across {len(opus)} sessions. "
-                    f"Same work on Sonnet would cost ~${sonnet_eq:,.0f}."
-                ),
-                "action": "Use Sonnet for routine tasks, Opus for complex reasoning.",
-                "savings": round(savings, 0),
-            })
+            recs.append(
+                {
+                    "severity": "medium",
+                    "title": f"Opus is {opus_cost / total_cost * 100:.0f}% of spend",
+                    "detail": (
+                        f"${opus_cost:,.0f} on Opus across {len(opus)} sessions. "
+                        f"Same work on Sonnet would cost ~${sonnet_eq:,.0f}."
+                    ),
+                    "action": "Use Sonnet for routine tasks, Opus for complex reasoning.",
+                    "savings": round(savings, 0),
+                }
+            )
 
     # Subagents
     agents = [s for s in sessions if s["project"] == "subagents"]
@@ -320,34 +348,46 @@ def _generate_recommendations(sessions, total_cost):
         agent_cost = sum(s["cost"]["total"] for s in agents)
         pct = agent_cost / total_cost * 100 if total_cost > 0 else 0
         if pct > 10:
-            recs.append({
-                "severity": "high",
-                "title": f"Subagents: ${agent_cost:,.0f} ({pct:.0f}% of total)",
-                "detail": f"{len(agents)} subagent sessions with independent contexts.",
-                "action": "Prefer Grep/Read/Glob over Agent for simple lookups.",
-                "savings": round(agent_cost * 0.30, 0),
-            })
+            recs.append(
+                {
+                    "severity": "high",
+                    "title": f"Subagents: ${agent_cost:,.0f} ({pct:.0f}% of total)",
+                    "detail": f"{len(agents)} subagent sessions with independent contexts.",
+                    "action": "Prefer Grep/Read/Glob over Agent for simple lookups.",
+                    "savings": round(agent_cost * 0.30, 0),
+                }
+            )
 
     # Weekly burn rate
     timed = [s for s in sessions if s.get("start_time") and s.get("end_time")]
     if timed:
-        now = datetime.now(timed[0]["start_time"].tzinfo) if timed[0]["start_time"].tzinfo else datetime.now()
+        now = (
+            datetime.now(timed[0]["start_time"].tzinfo)
+            if timed[0]["start_time"].tzinfo
+            else datetime.now()
+        )
         recent = [
-            s for s in timed
-            if s["end_time"] and (now - s["end_time"].replace(
-                tzinfo=now.tzinfo if now.tzinfo else None)).days < 7
+            s
+            for s in timed
+            if s["end_time"]
+            and (
+                now - s["end_time"].replace(tzinfo=now.tzinfo if now.tzinfo else None)
+            ).days
+            < 7
         ]
         if recent:
             cost_7d = sum(s["cost"]["total"] for s in recent)
             monthly = cost_7d / 7 * 30
             if monthly > 50:
-                recs.append({
-                    "severity": "info",
-                    "title": f"Projected: ${monthly:,.0f}/month",
-                    "detail": f"Last 7 days: ${cost_7d:,.0f} across {len(recent)} sessions.",
-                    "action": "Apply recommendations above to reduce burn rate.",
-                    "savings": 0,
-                })
+                recs.append(
+                    {
+                        "severity": "info",
+                        "title": f"Projected: ${monthly:,.0f}/month",
+                        "detail": f"Last 7 days: ${cost_7d:,.0f} across {len(recent)} sessions.",
+                        "action": "Apply recommendations above to reduce burn rate.",
+                        "savings": 0,
+                    }
+                )
 
     return recs
 
@@ -356,8 +396,12 @@ def _render_html(data):
     # P10: escape </script> to prevent premature tag close in embedded JSON
     data_json = json.dumps(data).replace("</", "<\\/")
     chart_js = _chart_js()
-    chart_script_tag = f"<script>{chart_js}</script>" if chart_js else (
-        '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>'
+    chart_script_tag = (
+        f"<script>{chart_js}</script>"
+        if chart_js
+        else (
+            '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>'
+        )
     )
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -440,7 +484,7 @@ def _render_html(data):
 <body>
 
 <h1>TokenXRay Dashboard</h1>
-<p class="subtitle">Generated {data['generated']} &mdash; {data['summary']['total_sessions']} sessions analyzed</p>
+<p class="subtitle">Generated {data["generated"]} &mdash; {data["summary"]["total_sessions"]} sessions analyzed</p>
 
 <!-- Summary Cards -->
 <div class="grid grid-4" id="summaryCards"></div>

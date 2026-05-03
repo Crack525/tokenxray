@@ -1,4 +1,5 @@
 """Generate personalized CLAUDE.md rules from your own session data."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -79,7 +80,11 @@ def _build_rules(sessions: list) -> list[str]:
 
     # Subagent usage → direct-tool preference
     total_agent_calls = sum(
-        sum(c for n, c in s.get("tool_calls", {}).items() if n.lower().startswith("agent"))
+        sum(
+            c
+            for n, c in s.get("tool_calls", {}).items()
+            if n.lower().startswith("agent")
+        )
         for s in sessions
     )
     if total_agent_calls >= 10:
@@ -107,7 +112,6 @@ def run(args) -> None:
         print(content)
         return
 
-    out_path = Path(args.path).resolve() if args.path else Path.cwd()
     # Write to current directory, not the sessions directory
     claude_md = Path.cwd() / "CLAUDE.md"
 

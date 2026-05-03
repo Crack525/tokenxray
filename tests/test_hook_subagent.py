@@ -1,18 +1,18 @@
 """Tests for the subagent hook (PreToolUse on Agent calls)."""
+
 import json
 import subprocess
 import sys
-import tempfile
-from pathlib import Path
 
-import pytest
 
 from tokenxray.commands.hook import SUBAGENT_HOOK_CODE
 
 SESSION_ID = "test-subagent-00000000"
 
 
-def _state(session_id=SESSION_ID, turns=10, total_cost=1.20, model="Sonnet", extra=None):
+def _state(
+    session_id=SESSION_ID, turns=10, total_cost=1.20, model="Sonnet", extra=None
+):
     s = {
         "session_id": session_id,
         "turns": turns,
@@ -52,6 +52,7 @@ def _run_hook(tmp_path, payload, state=None, config=None):
 
 # ── Test 1: first Agent call shows full warning ───────────────────────────────
 
+
 def test_first_call_shows_full_warning(tmp_path):
     state = _state()
     payload = {"tool_name": "Agent", "session_id": SESSION_ID}
@@ -65,6 +66,7 @@ def test_first_call_shows_full_warning(tmp_path):
 
 
 # ── Test 2: interval reminder fires at correct call count ─────────────────────
+
 
 def test_interval_reminder_fires(tmp_path):
     # Simulate 4 previous calls, so next (5th) triggers interval (default 5)
@@ -88,6 +90,7 @@ def test_calls_between_intervals_are_silent(tmp_path):
 
 # ── Test 3: subagent_warn=false disables all output ──────────────────────────
 
+
 def test_disable_config_suppresses_output(tmp_path):
     state = _state()
     payload = {"tool_name": "Agent", "session_id": SESSION_ID}
@@ -98,6 +101,7 @@ def test_disable_config_suppresses_output(tmp_path):
 
 
 # ── Test 4: stale/missing session → minimal first-call warning ───────────────
+
 
 def test_stale_session_id_shows_warning(tmp_path):
     # live_session.json has a different session_id → state is None → show first-call warning
@@ -120,6 +124,7 @@ def test_missing_live_session_shows_warning(tmp_path):
 
 # ── Test 5: flexible tool_name matching ──────────────────────────────────────
 
+
 def test_lowercase_agent_tool_name_matches(tmp_path):
     state = _state()
     payload = {"tool_name": "agent", "session_id": SESSION_ID}
@@ -140,6 +145,7 @@ def test_non_agent_tool_name_is_noop(tmp_path):
 
 # ── Test 6: missing session_id → silent no-op ────────────────────────────────
 
+
 def test_missing_session_id_is_noop(tmp_path):
     state = _state()
     payload = {"tool_name": "Agent"}  # no session_id
@@ -150,6 +156,7 @@ def test_missing_session_id_is_noop(tmp_path):
 
 
 # ── Test 7: subagent_calls counter is persisted ──────────────────────────────
+
 
 def test_call_counter_increments(tmp_path):
     state = _state()

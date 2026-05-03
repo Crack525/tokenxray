@@ -2,10 +2,7 @@
 
 import json
 import os
-import tempfile
-from pathlib import Path
 
-import pytest
 
 from tokenxray.commands.checkpoint import extract_checkpoint, format_checkpoint
 
@@ -23,55 +20,81 @@ def _make_session_with_tools(tmpdir, turns=5):
     """Create a session JSONL with realistic tool use blocks."""
     entries = []
     for i in range(turns):
-        entries.append({
-            "type": "user",
-            "cwd": "/home/dev/project",
-            "gitBranch": "feature-branch",
-            "sessionId": "test-session-123",
-            "timestamp": f"2026-01-01T00:{i:02d}:00Z",
-            "message": {"content": f"Please fix the bug in module {i}" if i > 0 else "Implement the new auth system for our API"},
-        })
+        entries.append(
+            {
+                "type": "user",
+                "cwd": "/home/dev/project",
+                "gitBranch": "feature-branch",
+                "sessionId": "test-session-123",
+                "timestamp": f"2026-01-01T00:{i:02d}:00Z",
+                "message": {
+                    "content": f"Please fix the bug in module {i}"
+                    if i > 0
+                    else "Implement the new auth system for our API"
+                },
+            }
+        )
         content_blocks = [
-            {"type": "text", "text": f"I'll work on fixing this issue in module {i}. Let me read the relevant files first."},
+            {
+                "type": "text",
+                "text": f"I'll work on fixing this issue in module {i}. Let me read the relevant files first.",
+            },
         ]
         if i % 2 == 0:
-            content_blocks.append({
-                "type": "tool_use",
-                "name": "Read",
-                "input": {"file_path": f"/home/dev/project/src/module_{i}.py"},
-            })
+            content_blocks.append(
+                {
+                    "type": "tool_use",
+                    "name": "Read",
+                    "input": {"file_path": f"/home/dev/project/src/module_{i}.py"},
+                }
+            )
         else:
-            content_blocks.append({
-                "type": "tool_use",
-                "name": "Edit",
-                "input": {"file_path": f"/home/dev/project/src/module_{i}.py", "old_string": "old", "new_string": "new"},
-            })
+            content_blocks.append(
+                {
+                    "type": "tool_use",
+                    "name": "Edit",
+                    "input": {
+                        "file_path": f"/home/dev/project/src/module_{i}.py",
+                        "old_string": "old",
+                        "new_string": "new",
+                    },
+                }
+            )
         if i == 3:
-            content_blocks.append({
-                "type": "tool_use",
-                "name": "Write",
-                "input": {"file_path": "/home/dev/project/src/new_file.py", "content": "# new"},
-            })
+            content_blocks.append(
+                {
+                    "type": "tool_use",
+                    "name": "Write",
+                    "input": {
+                        "file_path": "/home/dev/project/src/new_file.py",
+                        "content": "# new",
+                    },
+                }
+            )
         if i == 4:
-            content_blocks.append({
-                "type": "tool_use",
-                "name": "Bash",
-                "input": {"command": "pytest tests/ -v"},
-            })
-        entries.append({
-            "type": "assistant",
-            "timestamp": f"2026-01-01T00:{i:02d}:30Z",
-            "message": {
-                "model": "claude-sonnet-4-6",
-                "usage": {
-                    "input_tokens": 1000,
-                    "output_tokens": 200,
-                    "cache_read_input_tokens": 500,
-                    "cache_creation_input_tokens": 300,
+            content_blocks.append(
+                {
+                    "type": "tool_use",
+                    "name": "Bash",
+                    "input": {"command": "pytest tests/ -v"},
+                }
+            )
+        entries.append(
+            {
+                "type": "assistant",
+                "timestamp": f"2026-01-01T00:{i:02d}:30Z",
+                "message": {
+                    "model": "claude-sonnet-4-6",
+                    "usage": {
+                        "input_tokens": 1000,
+                        "output_tokens": 200,
+                        "cache_read_input_tokens": 500,
+                        "cache_creation_input_tokens": 300,
+                    },
+                    "content": content_blocks,
                 },
-                "content": content_blocks,
-            },
-        })
+            }
+        )
     filepath = os.path.join(tmpdir, "test-session.jsonl")
     _write_jsonl(filepath, entries)
     return filepath
@@ -92,7 +115,9 @@ def _make_minimal_session(tmpdir):
             "message": {
                 "model": "claude-sonnet-4-6",
                 "usage": {"input_tokens": 100, "output_tokens": 50},
-                "content": [{"type": "text", "text": "Sure, I can help you with that task."}],
+                "content": [
+                    {"type": "text", "text": "Sure, I can help you with that task."}
+                ],
             },
         },
     ]
@@ -119,7 +144,9 @@ def _make_session_with_noise(tmpdir):
         # System tag — should be filtered
         {
             "type": "user",
-            "message": {"content": "<system-reminder>some system content here</system-reminder>"},
+            "message": {
+                "content": "<system-reminder>some system content here</system-reminder>"
+            },
         },
         # tool_result — should be filtered
         {
@@ -141,7 +168,12 @@ def _make_session_with_noise(tmpdir):
             "message": {
                 "model": "claude-sonnet-4-6",
                 "usage": {"input_tokens": 500, "output_tokens": 100},
-                "content": [{"type": "text", "text": "I'll add the Google OAuth provider to the configuration."}],
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "I'll add the Google OAuth provider to the configuration.",
+                    }
+                ],
             },
         },
     ]
@@ -205,20 +237,29 @@ class TestExtractCheckpoint:
         """Should only keep last 5 assistant text blocks."""
         entries = []
         for i in range(20):
-            entries.append({
-                "type": "user",
-                "cwd": "/dev",
-                "sessionId": "s1",
-                "message": {"content": f"Do task number {i} please now"},
-            })
-            entries.append({
-                "type": "assistant",
-                "message": {
-                    "model": "claude-sonnet-4-6",
-                    "usage": {"input_tokens": 100, "output_tokens": 50},
-                    "content": [{"type": "text", "text": f"Working on task {i} — this is the response."}],
-                },
-            })
+            entries.append(
+                {
+                    "type": "user",
+                    "cwd": "/dev",
+                    "sessionId": "s1",
+                    "message": {"content": f"Do task number {i} please now"},
+                }
+            )
+            entries.append(
+                {
+                    "type": "assistant",
+                    "message": {
+                        "model": "claude-sonnet-4-6",
+                        "usage": {"input_tokens": 100, "output_tokens": 50},
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": f"Working on task {i} — this is the response.",
+                            }
+                        ],
+                    },
+                }
+            )
         filepath = str(tmp_path / "many.jsonl")
         _write_jsonl(filepath, entries)
         cp = extract_checkpoint(filepath)
@@ -229,20 +270,30 @@ class TestExtractCheckpoint:
         """Should only keep last 10 commands."""
         entries = []
         for i in range(20):
-            entries.append({
-                "type": "user",
-                "cwd": "/dev",
-                "sessionId": "s1",
-                "message": {"content": f"Run command number {i} right now"},
-            })
-            entries.append({
-                "type": "assistant",
-                "message": {
-                    "model": "claude-sonnet-4-6",
-                    "usage": {"input_tokens": 100, "output_tokens": 50},
-                    "content": [{"type": "tool_use", "name": "Bash", "input": {"command": f"echo {i}"}}],
-                },
-            })
+            entries.append(
+                {
+                    "type": "user",
+                    "cwd": "/dev",
+                    "sessionId": "s1",
+                    "message": {"content": f"Run command number {i} right now"},
+                }
+            )
+            entries.append(
+                {
+                    "type": "assistant",
+                    "message": {
+                        "model": "claude-sonnet-4-6",
+                        "usage": {"input_tokens": 100, "output_tokens": 50},
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "name": "Bash",
+                                "input": {"command": f"echo {i}"},
+                            }
+                        ],
+                    },
+                }
+            )
         filepath = str(tmp_path / "cmds.jsonl")
         _write_jsonl(filepath, entries)
         cp = extract_checkpoint(filepath)
@@ -256,20 +307,30 @@ class TestExtractCheckpoint:
         """Should only keep last 20 read files."""
         entries = []
         for i in range(30):
-            entries.append({
-                "type": "user",
-                "cwd": "/dev",
-                "sessionId": "s1",
-                "message": {"content": f"Read file number {i} from the project"},
-            })
-            entries.append({
-                "type": "assistant",
-                "message": {
-                    "model": "claude-sonnet-4-6",
-                    "usage": {"input_tokens": 100, "output_tokens": 50},
-                    "content": [{"type": "tool_use", "name": "Read", "input": {"file_path": f"/dev/file_{i:02d}.py"}}],
-                },
-            })
+            entries.append(
+                {
+                    "type": "user",
+                    "cwd": "/dev",
+                    "sessionId": "s1",
+                    "message": {"content": f"Read file number {i} from the project"},
+                }
+            )
+            entries.append(
+                {
+                    "type": "assistant",
+                    "message": {
+                        "model": "claude-sonnet-4-6",
+                        "usage": {"input_tokens": 100, "output_tokens": 50},
+                        "content": [
+                            {
+                                "type": "tool_use",
+                                "name": "Read",
+                                "input": {"file_path": f"/dev/file_{i:02d}.py"},
+                            }
+                        ],
+                    },
+                }
+            )
         filepath = str(tmp_path / "reads.jsonl")
         _write_jsonl(filepath, entries)
         cp = extract_checkpoint(filepath)
@@ -330,14 +391,30 @@ class TestUserMessageFiltering:
 class TestFileDetection:
     def test_edit_tool_detected(self, tmp_path):
         entries = [
-            {"type": "user", "cwd": "/dev", "sessionId": "s1",
-             "message": {"content": "Fix the authentication module please"}},
-            {"type": "assistant", "message": {
-                "model": "claude-sonnet-4-6",
-                "usage": {"input_tokens": 100, "output_tokens": 50},
-                "content": [{"type": "tool_use", "name": "Edit",
-                             "input": {"file_path": "/dev/auth.py", "old_string": "a", "new_string": "b"}}],
-            }},
+            {
+                "type": "user",
+                "cwd": "/dev",
+                "sessionId": "s1",
+                "message": {"content": "Fix the authentication module please"},
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "model": "claude-sonnet-4-6",
+                    "usage": {"input_tokens": 100, "output_tokens": 50},
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Edit",
+                            "input": {
+                                "file_path": "/dev/auth.py",
+                                "old_string": "a",
+                                "new_string": "b",
+                            },
+                        }
+                    ],
+                },
+            },
         ]
         filepath = str(tmp_path / "edit.jsonl")
         _write_jsonl(filepath, entries)
@@ -347,14 +424,29 @@ class TestFileDetection:
 
     def test_write_tool_detected(self, tmp_path):
         entries = [
-            {"type": "user", "cwd": "/dev", "sessionId": "s1",
-             "message": {"content": "Create a new configuration file now"}},
-            {"type": "assistant", "message": {
-                "model": "claude-sonnet-4-6",
-                "usage": {"input_tokens": 100, "output_tokens": 50},
-                "content": [{"type": "tool_use", "name": "Write",
-                             "input": {"file_path": "/dev/config.yaml", "content": "key: value"}}],
-            }},
+            {
+                "type": "user",
+                "cwd": "/dev",
+                "sessionId": "s1",
+                "message": {"content": "Create a new configuration file now"},
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "model": "claude-sonnet-4-6",
+                    "usage": {"input_tokens": 100, "output_tokens": 50},
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Write",
+                            "input": {
+                                "file_path": "/dev/config.yaml",
+                                "content": "key: value",
+                            },
+                        }
+                    ],
+                },
+            },
         ]
         filepath = str(tmp_path / "write.jsonl")
         _write_jsonl(filepath, entries)
@@ -364,14 +456,26 @@ class TestFileDetection:
 
     def test_read_tool_detected(self, tmp_path):
         entries = [
-            {"type": "user", "cwd": "/dev", "sessionId": "s1",
-             "message": {"content": "Show me the contents of the readme"}},
-            {"type": "assistant", "message": {
-                "model": "claude-sonnet-4-6",
-                "usage": {"input_tokens": 100, "output_tokens": 50},
-                "content": [{"type": "tool_use", "name": "Read",
-                             "input": {"file_path": "/dev/README.md"}}],
-            }},
+            {
+                "type": "user",
+                "cwd": "/dev",
+                "sessionId": "s1",
+                "message": {"content": "Show me the contents of the readme"},
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "model": "claude-sonnet-4-6",
+                    "usage": {"input_tokens": 100, "output_tokens": 50},
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Read",
+                            "input": {"file_path": "/dev/README.md"},
+                        }
+                    ],
+                },
+            },
         ]
         filepath = str(tmp_path / "read.jsonl")
         _write_jsonl(filepath, entries)
@@ -381,18 +485,39 @@ class TestFileDetection:
 
     def test_deduplicates_files(self, tmp_path):
         entries = [
-            {"type": "user", "cwd": "/dev", "sessionId": "s1",
-             "message": {"content": "Edit the same file multiple times now"}},
-            {"type": "assistant", "message": {
-                "model": "claude-sonnet-4-6",
-                "usage": {"input_tokens": 100, "output_tokens": 50},
-                "content": [
-                    {"type": "tool_use", "name": "Edit",
-                     "input": {"file_path": "/dev/app.py", "old_string": "a", "new_string": "b"}},
-                    {"type": "tool_use", "name": "Edit",
-                     "input": {"file_path": "/dev/app.py", "old_string": "c", "new_string": "d"}},
-                ],
-            }},
+            {
+                "type": "user",
+                "cwd": "/dev",
+                "sessionId": "s1",
+                "message": {"content": "Edit the same file multiple times now"},
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "model": "claude-sonnet-4-6",
+                    "usage": {"input_tokens": 100, "output_tokens": 50},
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Edit",
+                            "input": {
+                                "file_path": "/dev/app.py",
+                                "old_string": "a",
+                                "new_string": "b",
+                            },
+                        },
+                        {
+                            "type": "tool_use",
+                            "name": "Edit",
+                            "input": {
+                                "file_path": "/dev/app.py",
+                                "old_string": "c",
+                                "new_string": "d",
+                            },
+                        },
+                    ],
+                },
+            },
         ]
         filepath = str(tmp_path / "dedup.jsonl")
         _write_jsonl(filepath, entries)
@@ -402,14 +527,30 @@ class TestFileDetection:
 
     def test_empty_file_path_ignored(self, tmp_path):
         entries = [
-            {"type": "user", "cwd": "/dev", "sessionId": "s1",
-             "message": {"content": "Do something with an empty path here"}},
-            {"type": "assistant", "message": {
-                "model": "claude-sonnet-4-6",
-                "usage": {"input_tokens": 100, "output_tokens": 50},
-                "content": [{"type": "tool_use", "name": "Edit",
-                             "input": {"file_path": "", "old_string": "a", "new_string": "b"}}],
-            }},
+            {
+                "type": "user",
+                "cwd": "/dev",
+                "sessionId": "s1",
+                "message": {"content": "Do something with an empty path here"},
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "model": "claude-sonnet-4-6",
+                    "usage": {"input_tokens": 100, "output_tokens": 50},
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Edit",
+                            "input": {
+                                "file_path": "",
+                                "old_string": "a",
+                                "new_string": "b",
+                            },
+                        }
+                    ],
+                },
+            },
         ]
         filepath = str(tmp_path / "empty.jsonl")
         _write_jsonl(filepath, entries)
@@ -515,7 +656,13 @@ class TestFormatCheckpoint:
             "session_id": "s1",
             "cwd": "/dev",
             "git_branch": "main",
-            "user_messages": ["First goal message", "Second message text", "Third message text", "Fourth message text", "Fifth message text"],
+            "user_messages": [
+                "First goal message",
+                "Second message text",
+                "Third message text",
+                "Fourth message text",
+                "Fifth message text",
+            ],
             "files_edited": [],
             "files_read": [],
             "commands_run": [],
@@ -543,9 +690,13 @@ class TestEdgeCases:
         """Should handle invalid JSON lines gracefully."""
         filepath = str(tmp_path / "bad.jsonl")
         with open(filepath, "w") as f:
-            f.write('{"type": "user", "cwd": "/dev", "sessionId": "s1", "message": {"content": "hello world test"}}\n')
+            f.write(
+                '{"type": "user", "cwd": "/dev", "sessionId": "s1", "message": {"content": "hello world test"}}\n'
+            )
             f.write("not valid json\n")
-            f.write('{"type": "assistant", "message": {"model": "claude-sonnet-4-6", "usage": {"input_tokens": 100, "output_tokens": 50}, "content": [{"type": "text", "text": "response text here for test"}]}}\n')
+            f.write(
+                '{"type": "assistant", "message": {"model": "claude-sonnet-4-6", "usage": {"input_tokens": 100, "output_tokens": 50}, "content": [{"type": "text", "text": "response text here for test"}]}}\n'
+            )
 
         cp = extract_checkpoint(filepath)
         assert cp["session_id"] == "s1"
@@ -553,7 +704,7 @@ class TestEdgeCases:
 
     def test_empty_file(self, tmp_path):
         filepath = str(tmp_path / "empty.jsonl")
-        with open(filepath, "w") as f:
+        with open(filepath, "w"):
             pass
 
         cp = extract_checkpoint(filepath)
@@ -564,13 +715,20 @@ class TestEdgeCases:
     def test_missing_content_blocks(self, tmp_path):
         """Handle assistant entries with no content list."""
         entries = [
-            {"type": "user", "cwd": "/dev", "sessionId": "s1",
-             "message": {"content": "Test message for missing content"}},
-            {"type": "assistant", "message": {
-                "model": "claude-sonnet-4-6",
-                "usage": {"input_tokens": 100, "output_tokens": 50},
-                "content": "just a string not a list",
-            }},
+            {
+                "type": "user",
+                "cwd": "/dev",
+                "sessionId": "s1",
+                "message": {"content": "Test message for missing content"},
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "model": "claude-sonnet-4-6",
+                    "usage": {"input_tokens": 100, "output_tokens": 50},
+                    "content": "just a string not a list",
+                },
+            },
         ]
         filepath = str(tmp_path / "no_blocks.jsonl")
         _write_jsonl(filepath, entries)
@@ -582,8 +740,12 @@ class TestEdgeCases:
     def test_user_content_not_string(self, tmp_path):
         """Handle user entries where content is a list (tool results)."""
         entries = [
-            {"type": "user", "cwd": "/dev", "sessionId": "s1",
-             "message": {"content": [{"type": "tool_result", "content": "result"}]}},
+            {
+                "type": "user",
+                "cwd": "/dev",
+                "sessionId": "s1",
+                "message": {"content": [{"type": "tool_result", "content": "result"}]},
+            },
         ]
         filepath = str(tmp_path / "list_content.jsonl")
         _write_jsonl(filepath, entries)
@@ -596,15 +758,32 @@ class TestEdgeCases:
         extract_checkpoint must handle this format — the original bug silently
         dropped all messages, producing empty checkpoints."""
         entries = [
-            {"type": "user", "cwd": "/dev", "sessionId": "s1", "gitBranch": "main",
-             "message": {"content": [
-                 {"type": "text", "text": "Fix the authentication module and add OAuth"},
-             ]}},
-            {"type": "user",
-             "message": {"content": [
-                 {"type": "tool_result", "content": "some result"},
-                 {"type": "text", "text": "Now add rate limiting to the endpoints"},
-             ]}},
+            {
+                "type": "user",
+                "cwd": "/dev",
+                "sessionId": "s1",
+                "gitBranch": "main",
+                "message": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Fix the authentication module and add OAuth",
+                        },
+                    ]
+                },
+            },
+            {
+                "type": "user",
+                "message": {
+                    "content": [
+                        {"type": "tool_result", "content": "some result"},
+                        {
+                            "type": "text",
+                            "text": "Now add rate limiting to the endpoints",
+                        },
+                    ]
+                },
+            },
         ]
         filepath = str(tmp_path / "list_text.jsonl")
         _write_jsonl(filepath, entries)
@@ -617,12 +796,21 @@ class TestEdgeCases:
     def test_mixed_str_and_list_messages(self, tmp_path):
         """Sessions can mix str-format and list-format user messages."""
         entries = [
-            {"type": "user", "cwd": "/dev", "sessionId": "s1", "gitBranch": "main",
-             "message": {"content": "First message as plain string format"}},
-            {"type": "user",
-             "message": {"content": [
-                 {"type": "text", "text": "Second message in list format here"},
-             ]}},
+            {
+                "type": "user",
+                "cwd": "/dev",
+                "sessionId": "s1",
+                "gitBranch": "main",
+                "message": {"content": "First message as plain string format"},
+            },
+            {
+                "type": "user",
+                "message": {
+                    "content": [
+                        {"type": "text", "text": "Second message in list format here"},
+                    ]
+                },
+            },
         ]
         filepath = str(tmp_path / "mixed.jsonl")
         _write_jsonl(filepath, entries)
@@ -641,7 +829,6 @@ class TestLoadConfig:
 
     def _get_load_config(self, config_path):
         """Extract and return load_config bound to a custom config path."""
-        import types
 
         def load_config():
             cfg = {
@@ -684,12 +871,16 @@ class TestLoadConfig:
 
     def test_full_override(self, tmp_path):
         config_file = tmp_path / "config.json"
-        config_file.write_text(json.dumps({
-            "split_turns": 40,
-            "split_cost": 15,
-            "alert_thresholds": [5, 10, 20],
-            "status_interval": 5,
-        }))
+        config_file.write_text(
+            json.dumps(
+                {
+                    "split_turns": 40,
+                    "split_cost": 15,
+                    "alert_thresholds": [5, 10, 20],
+                    "status_interval": 5,
+                }
+            )
+        )
 
         load_config = self._get_load_config(config_file)
         cfg = load_config()

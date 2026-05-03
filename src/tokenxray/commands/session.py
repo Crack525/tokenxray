@@ -1,9 +1,14 @@
 """Deep dive into a single session."""
 
-from pathlib import Path
-
 from tokenxray.colors import C
-from tokenxray.display import fmt_cost, fmt_tokens, bar, duration_str, display_models, display_project_name
+from tokenxray.display import (
+    fmt_cost,
+    fmt_tokens,
+    bar,
+    duration_str,
+    display_models,
+    display_project_name,
+)
 from tokenxray.parser import load_all_sessions
 
 
@@ -41,8 +46,12 @@ def run(args):
     print()
     print(f"  {C.BOLD}Cost Breakdown:{C.RESET}")
     print(f"    Fresh input:     {fmt_cost(cost['input']):>10}")
-    print(f"    Cache read:      {fmt_cost(cost['cache_read']):>10}  {C.DIM}(90% discount){C.RESET}")
-    print(f"    Cache create:    {fmt_cost(cost['cache_create']):>10}  {C.DIM}(25% premium){C.RESET}")
+    print(
+        f"    Cache read:      {fmt_cost(cost['cache_read']):>10}  {C.DIM}(90% discount){C.RESET}"
+    )
+    print(
+        f"    Cache create:    {fmt_cost(cost['cache_create']):>10}  {C.DIM}(25% premium){C.RESET}"
+    )
     print(f"    Output:          {fmt_cost(cost['output']):>10}")
     print(f"    {C.BOLD}Total:           {fmt_cost(cost['total']):>10}{C.RESET}")
     print(f"    Without caching: {fmt_cost(cost['total_no_cache']):>10}")
@@ -57,8 +66,10 @@ def run(args):
     print(f"  {C.BOLD}Token Breakdown:{C.RESET}")
     print(f"    Total sent to model:   {fmt_tokens(total_sent):>10}")
     if total_sent > 0:
-        print(f"      Cache read (reused): {fmt_tokens(s['total_cache_read']):>10}  "
-              f"({s['total_cache_read'] / total_sent * 100:.0f}%)")
+        print(
+            f"      Cache read (reused): {fmt_tokens(s['total_cache_read']):>10}  "
+            f"({s['total_cache_read'] / total_sent * 100:.0f}%)"
+        )
     print(f"      Cache create (new):  {fmt_tokens(s['total_cache_create']):>10}")
     print(f"      Fresh input:         {fmt_tokens(s['total_input']):>10}")
     print(f"    Output generated:      {fmt_tokens(s['total_output']):>10}")
@@ -68,7 +79,9 @@ def run(args):
     print(f"  {C.BOLD}The Waste Ratio:{C.RESET}")
     if user_q_tokens > 0 and total_sent > 0:
         q_pct = user_q_tokens / total_sent * 100
-        print(f"    Your questions:     {fmt_tokens(user_q_tokens):>10}  ({q_pct:.3f}% of input)")
+        print(
+            f"    Your questions:     {fmt_tokens(user_q_tokens):>10}  ({q_pct:.3f}% of input)"
+        )
     print(f"    Tool results:       {fmt_tokens(tool_result_tokens):>10}")
     print(f"    Assistant output:   {fmt_tokens(assistant_tokens):>10}")
 
@@ -99,13 +112,17 @@ def run(args):
     print(f"  {C.BOLD}Token Bombs (largest outputs):{C.RESET}")
     for t in sorted(s["turns"], key=lambda t: t["output"], reverse=True)[:5]:
         if t["output"] > 0:
-            print(f"    Turn {t['num']:>4}: {C.YELLOW}{fmt_tokens(t['output']):>8}{C.RESET} output tokens")
+            print(
+                f"    Turn {t['num']:>4}: {C.YELLOW}{fmt_tokens(t['output']):>8}{C.RESET} output tokens"
+            )
 
     # Tool usage
     if s["tool_calls"]:
         print()
         print(f"  {C.BOLD}Tool Usage:{C.RESET}")
-        for name, count in sorted(s["tool_calls"].items(), key=lambda x: x[1], reverse=True)[:10]:
+        for name, count in sorted(
+            s["tool_calls"].items(), key=lambda x: x[1], reverse=True
+        )[:10]:
             print(f"    {name:>20}: {count:>4} calls")
 
     # Cache creation analysis

@@ -2,10 +2,7 @@
 
 import json
 import os
-import tempfile
-from pathlib import Path
 
-import pytest
 
 from tokenxray.parser import (
     parse_session,
@@ -30,27 +27,31 @@ def _make_claude_session(tmpdir, model="claude-opus-4-6", turns=3):
     """Create a minimal Claude Code JSONL session file."""
     entries = []
     for i in range(turns):
-        entries.append({
-            "type": "user",
-            "timestamp": f"2026-01-01T00:{i:02d}:00Z",
-            "message": {"content": f"Question {i}" * 10},
-        })
-        entries.append({
-            "type": "assistant",
-            "timestamp": f"2026-01-01T00:{i:02d}:30Z",
-            "message": {
-                "model": model,
-                "usage": {
-                    "input_tokens": 1000 * (i + 1),
-                    "output_tokens": 200,
-                    "cache_read_input_tokens": 500 * i,
-                    "cache_creation_input_tokens": 300,
+        entries.append(
+            {
+                "type": "user",
+                "timestamp": f"2026-01-01T00:{i:02d}:00Z",
+                "message": {"content": f"Question {i}" * 10},
+            }
+        )
+        entries.append(
+            {
+                "type": "assistant",
+                "timestamp": f"2026-01-01T00:{i:02d}:30Z",
+                "message": {
+                    "model": model,
+                    "usage": {
+                        "input_tokens": 1000 * (i + 1),
+                        "output_tokens": 200,
+                        "cache_read_input_tokens": 500 * i,
+                        "cache_creation_input_tokens": 300,
+                    },
+                    "content": [
+                        {"type": "text", "text": "Response " * 50},
+                    ],
                 },
-                "content": [
-                    {"type": "text", "text": "Response " * 50},
-                ],
-            },
-        })
+            }
+        )
     filepath = os.path.join(tmpdir, "test-session.jsonl")
     _write_jsonl(filepath, entries)
     return filepath
@@ -60,27 +61,31 @@ def _make_gemini_session(tmpdir, model="gemini-2.5-pro", turns=3):
     """Create a minimal Gemini CLI session JSON file."""
     messages = []
     for i in range(turns):
-        messages.append({
-            "id": f"user-{i}",
-            "timestamp": f"2026-01-01T00:{i:02d}:00Z",
-            "type": "user",
-            "content": f"Question {i}" * 10,
-        })
-        messages.append({
-            "id": f"gemini-{i}",
-            "timestamp": f"2026-01-01T00:{i:02d}:30Z",
-            "type": "gemini",
-            "content": "Response " * 50,
-            "model": model,
-            "tokens": {
-                "input": 2000 * (i + 1),
-                "output": 150,
-                "cached": 800 * i,
-                "thoughts": 50,
-                "tool": 0,
-                "total": 2000 * (i + 1) + 150 + 50,
-            },
-        })
+        messages.append(
+            {
+                "id": f"user-{i}",
+                "timestamp": f"2026-01-01T00:{i:02d}:00Z",
+                "type": "user",
+                "content": f"Question {i}" * 10,
+            }
+        )
+        messages.append(
+            {
+                "id": f"gemini-{i}",
+                "timestamp": f"2026-01-01T00:{i:02d}:30Z",
+                "type": "gemini",
+                "content": "Response " * 50,
+                "model": model,
+                "tokens": {
+                    "input": 2000 * (i + 1),
+                    "output": 150,
+                    "cached": 800 * i,
+                    "thoughts": 50,
+                    "tool": 0,
+                    "total": 2000 * (i + 1) + 150 + 50,
+                },
+            }
+        )
     data = {
         "sessionId": "test-gemini-session-id",
         "projectHash": "abc123def456",
@@ -106,36 +111,41 @@ def _make_copilot_session(tmpdir, turns=2):
         },
     ]
     for i in range(turns):
-        entries.extend([
-            {
-                "type": "user.message",
-                "data": {"content": "Hello world " * 20},
-                "id": f"user-{i}",
-                "timestamp": f"2026-01-01T00:{i:02d}:10Z",
-                "parentId": None,
-            },
-            {
-                "type": "assistant.turn_start",
-                "data": {"turnId": f"{i}.0"},
-                "id": f"turn-start-{i}",
-                "timestamp": f"2026-01-01T00:{i:02d}:15Z",
-                "parentId": f"user-{i}",
-            },
-            {
-                "type": "assistant.message",
-                "data": {"messageId": f"msg-{i}", "content": "Here is the answer " * 30},
-                "id": f"msg-{i}",
-                "timestamp": f"2026-01-01T00:{i:02d}:20Z",
-                "parentId": f"turn-start-{i}",
-            },
-            {
-                "type": "assistant.turn_end",
-                "data": {"turnId": f"{i}.0"},
-                "id": f"turn-end-{i}",
-                "timestamp": f"2026-01-01T00:{i:02d}:25Z",
-                "parentId": f"msg-{i}",
-            },
-        ])
+        entries.extend(
+            [
+                {
+                    "type": "user.message",
+                    "data": {"content": "Hello world " * 20},
+                    "id": f"user-{i}",
+                    "timestamp": f"2026-01-01T00:{i:02d}:10Z",
+                    "parentId": None,
+                },
+                {
+                    "type": "assistant.turn_start",
+                    "data": {"turnId": f"{i}.0"},
+                    "id": f"turn-start-{i}",
+                    "timestamp": f"2026-01-01T00:{i:02d}:15Z",
+                    "parentId": f"user-{i}",
+                },
+                {
+                    "type": "assistant.message",
+                    "data": {
+                        "messageId": f"msg-{i}",
+                        "content": "Here is the answer " * 30,
+                    },
+                    "id": f"msg-{i}",
+                    "timestamp": f"2026-01-01T00:{i:02d}:20Z",
+                    "parentId": f"turn-start-{i}",
+                },
+                {
+                    "type": "assistant.turn_end",
+                    "data": {"turnId": f"{i}.0"},
+                    "id": f"turn-end-{i}",
+                    "timestamp": f"2026-01-01T00:{i:02d}:25Z",
+                    "parentId": f"msg-{i}",
+                },
+            ]
+        )
     filepath = os.path.join(tmpdir, "test-copilot.jsonl")
     _write_jsonl(filepath, entries)
     return filepath
@@ -198,8 +208,12 @@ class TestClaudeParser:
                 "type": "assistant",
                 "message": {
                     "model": "claude-opus-4-6",
-                    "usage": {"input_tokens": 100, "output_tokens": 50,
-                              "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0},
+                    "usage": {
+                        "input_tokens": 100,
+                        "output_tokens": 50,
+                        "cache_read_input_tokens": 0,
+                        "cache_creation_input_tokens": 0,
+                    },
                     "content": [
                         {"type": "tool_use", "name": "Read"},
                         {"type": "tool_use", "name": "Read"},
@@ -384,27 +398,37 @@ class TestMixedModelPricing:
     def _make_mixed_session(self, tmp_path):
         """Session with 2 Sonnet turns then 2 Opus turns."""
         entries = []
-        for i, (model, inp, out) in enumerate([
-            ("claude-sonnet-4-6", 1000, 200),
-            ("claude-sonnet-4-6", 1000, 200),
-            ("claude-opus-4-6",   1000, 200),
-            ("claude-opus-4-6",   1000, 200),
-        ]):
-            entries.append({
-                "type": "user",
-                "timestamp": f"2026-01-01T00:{i:02d}:00Z",
-                "message": {"content": "x" * 50},
-            })
-            entries.append({
-                "type": "assistant",
-                "timestamp": f"2026-01-01T00:{i:02d}:30Z",
-                "message": {
-                    "model": model,
-                    "usage": {"input_tokens": inp, "output_tokens": out,
-                               "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0},
-                    "content": [{"type": "text", "text": "answer"}],
-                },
-            })
+        for i, (model, inp, out) in enumerate(
+            [
+                ("claude-sonnet-4-6", 1000, 200),
+                ("claude-sonnet-4-6", 1000, 200),
+                ("claude-opus-4-6", 1000, 200),
+                ("claude-opus-4-6", 1000, 200),
+            ]
+        ):
+            entries.append(
+                {
+                    "type": "user",
+                    "timestamp": f"2026-01-01T00:{i:02d}:00Z",
+                    "message": {"content": "x" * 50},
+                }
+            )
+            entries.append(
+                {
+                    "type": "assistant",
+                    "timestamp": f"2026-01-01T00:{i:02d}:30Z",
+                    "message": {
+                        "model": model,
+                        "usage": {
+                            "input_tokens": inp,
+                            "output_tokens": out,
+                            "cache_read_input_tokens": 0,
+                            "cache_creation_input_tokens": 0,
+                        },
+                        "content": [{"type": "text", "text": "answer"}],
+                    },
+                }
+            )
         path = str(tmp_path / "mixed.jsonl")
         _write_jsonl(path, entries)
         return path
@@ -418,43 +442,51 @@ class TestMixedModelPricing:
 
     def test_mixed_model_cost_is_accurate(self, tmp_path):
         from tokenxray.config import get_pricing
+
         path = self._make_mixed_session(tmp_path)
         cost = calc_cost(parse_session(path))["total"]
 
         sonnet = get_pricing("claude-sonnet-4-6")
         opus = get_pricing("claude-opus-4-6")
-        expected = (
-            2 * ((1000 / 1e6) * sonnet["input"] + (200 / 1e6) * sonnet["output"])
-            + 2 * ((1000 / 1e6) * opus["input"] + (200 / 1e6) * opus["output"])
-        )
-        assert abs(cost - expected) < 1e-9, (
-            f"Expected {expected:.8f}, got {cost:.8f}"
-        )
+        expected = 2 * (
+            (1000 / 1e6) * sonnet["input"] + (200 / 1e6) * sonnet["output"]
+        ) + 2 * ((1000 / 1e6) * opus["input"] + (200 / 1e6) * opus["output"])
+        assert abs(cost - expected) < 1e-9, f"Expected {expected:.8f}, got {cost:.8f}"
 
     def test_single_model_session_unchanged(self, tmp_path):
         """Single-model sessions should produce the same cost as before."""
         path = str(tmp_path / "single.jsonl")
         entries = []
         for i in range(3):
-            entries.append({
-                "type": "user",
-                "timestamp": f"2026-01-01T00:{i:02d}:00Z",
-                "message": {"content": "x" * 50},
-            })
-            entries.append({
-                "type": "assistant",
-                "timestamp": f"2026-01-01T00:{i:02d}:30Z",
-                "message": {
-                    "model": "claude-sonnet-4-6",
-                    "usage": {"input_tokens": 500, "output_tokens": 100,
-                               "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0},
-                    "content": [{"type": "text", "text": "ok"}],
-                },
-            })
+            entries.append(
+                {
+                    "type": "user",
+                    "timestamp": f"2026-01-01T00:{i:02d}:00Z",
+                    "message": {"content": "x" * 50},
+                }
+            )
+            entries.append(
+                {
+                    "type": "assistant",
+                    "timestamp": f"2026-01-01T00:{i:02d}:30Z",
+                    "message": {
+                        "model": "claude-sonnet-4-6",
+                        "usage": {
+                            "input_tokens": 500,
+                            "output_tokens": 100,
+                            "cache_read_input_tokens": 0,
+                            "cache_creation_input_tokens": 0,
+                        },
+                        "content": [{"type": "text", "text": "ok"}],
+                    },
+                }
+            )
         _write_jsonl(path, entries)
         s = parse_session(path)
         cost = calc_cost(s)["total"]
 
         pricing = get_pricing("claude-sonnet-4-6")
-        expected = 3 * ((500 / 1e6) * pricing["input"] + (100 / 1e6) * pricing["output"])
+        expected = 3 * (
+            (500 / 1e6) * pricing["input"] + (100 / 1e6) * pricing["output"]
+        )
         assert abs(cost - expected) < 1e-9
