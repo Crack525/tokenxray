@@ -1,5 +1,14 @@
 # TokenXRay Changelog
 
+## v0.3.28 — 2026-05-03 · per-project session history feed
+
+- Resume hook now appends each completed session to `~/.tokenxray/history.jsonl` (session_id, project, turns, cost, model, context_size)
+- At next session start, prints last 3 entries for the current project so the agent has cross-session cost/context awareness without manual memory saves
+- History is project-scoped by `cwd` directory name; cross-project noise filtered out
+- 4 new tests covering archive, dedup guard, project filtering, and empty-history no-op
+
+---
+
 ## v0.3.27 — 2026-05-03 · hook version skew detection
 
 - Embeds `TOKENXRAY_HOOK_VERSION` in deployed `cost_hook.py` at install time (baked from package version)

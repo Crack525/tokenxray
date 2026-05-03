@@ -578,6 +578,7 @@ from datetime import datetime, timezone
 
 COST_LOG = Path.home() / ".tokenxray" / "live_session.json"
 SUMMARY_SHOWN = Path.home() / ".tokenxray" / ".last_summary_session"
+HISTORY_LOG = Path.home() / ".tokenxray" / "history.jsonl"
 CONFIG_FILE = Path.home() / ".tokenxray" / "config.json"
 DEBUG_LOG = Path.home() / ".tokenxray" / "debug.log"
 
@@ -656,6 +657,65 @@ def show_last_session_summary():
     except Exception:
         pass
 
+    archive_session_to_history(prev)
+
+
+def archive_session_to_history(prev):
+    """Append previous session stats to ~/.tokenxray/history.jsonl."""
+    try:
+        entry = {
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "session_id": prev.get("session_id", ""),
+            "project": Path.cwd().name,
+            "turns": prev.get("turns", 0),
+            "cost": prev.get("total_cost", 0.0),
+            "model": prev.get("model", "unknown"),
+            "context_size": prev.get("context_size", 0),
+        }
+        HISTORY_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with open(HISTORY_LOG, "a") as f:
+            f.write(json.dumps(entry) + "\\n")
+    except Exception:
+        pass
+
+
+def show_session_history():
+    """Print the last 3 sessions for the current project from history.jsonl."""
+    if not HISTORY_LOG.exists():
+        return
+    try:
+        project = Path.cwd().name
+        entries = []
+        with open(HISTORY_LOG) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    e = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if e.get("project") == project:
+                    entries.append(e)
+        recent = entries[-3:]
+        if not recent:
+            return
+        print(f"\\033[2m[TokenXRay] Project history ({project}):", file=sys.stdout)
+        for e in recent:
+            turns = e.get("turns", 0)
+            cost = e.get("cost", 0.0)
+            model = e.get("model", "unknown")
+            ctx = e.get("context_size", 0)
+            ctx_str = f"{ctx/1000:.0f}K" if ctx < 1e6 else f"{ctx/1e6:.1f}M"
+            ts = e.get("ts", "")[:10]
+            print(
+                f"  {ts}  {turns} turns  ${cost:.2f}  {model}  ctx {ctx_str}",
+                file=sys.stdout,
+            )
+        print("\\033[0m", end="", file=sys.stdout)
+    except Exception:
+        pass
+
 
 def check_checkpoint():
     """Load checkpoint if recent and not already loaded.
@@ -718,6 +778,7 @@ def main():
     cfg = load_config()
     debug_enabled = cfg.get("debug_log", False)
     write_debug("invoked", debug_enabled)
+    show_session_history()
     show_last_session_summary()
     check_checkpoint()
 
