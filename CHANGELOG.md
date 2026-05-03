@@ -1,5 +1,13 @@
 # TokenXRay Changelog
 
+## v0.3.25 — 2026-05-03 · subagent injection coverage
+
+- `find_session_files()` gains `include_subagents=False` parameter — default unchanged for all existing callers
+- `--memory-impact` now passes `include_subagents=True` so injections that fired inside subagent sessions (e.g. Explore/Plan agents) are correctly correlated instead of silently dropped
+- Unmatched injections (no session in range) are counted and reported at the footer rather than silently ignored
+
+---
+
 ## v0.3.24 — 2026-05-03 · `tokenxray --memory-impact`
 
 New command: **memory hit rate analysis** — feedback loop to know which crossmem

@@ -10,15 +10,20 @@ from collections import defaultdict
 from tokenxray.config import CLAUDE_PROJECTS_DIR, GEMINI_SESSIONS_DIR, COPILOT_WORKSPACE_DIR, get_pricing
 
 
-def find_session_files(base_path=None):
-    """Find all Claude Code JSONL conversation logs, excluding subagent files."""
+def find_session_files(base_path=None, include_subagents=False):
+    """Find all Claude Code JSONL conversation logs.
+
+    By default subagent files (under a 'subagents/' directory) are excluded
+    so cost reporting stays clean. Pass include_subagents=True to include them
+    (used by memory hit-rate analysis which needs to correlate all injections).
+    """
     path = Path(base_path) if base_path else CLAUDE_PROJECTS_DIR
     if not path.exists():
         return []
-    return sorted(
-        f for f in glob.glob(str(path / "**/*.jsonl"), recursive=True)
-        if "subagents" not in Path(f).parts
-    )
+    all_files = glob.glob(str(path / "**/*.jsonl"), recursive=True)
+    if include_subagents:
+        return sorted(all_files)
+    return sorted(f for f in all_files if "subagents" not in Path(f).parts)
 
 
 def find_gemini_session_files():

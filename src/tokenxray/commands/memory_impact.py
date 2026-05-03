@@ -118,16 +118,18 @@ def run(_args) -> None:
         )
         return
 
-    session_files = find_session_files()
+    # Include subagent sessions — crossmem hooks fire inside subagents too
+    session_files = find_session_files(include_subagents=True)
     if not session_files:
         print(C.yellow("No Claude session files found."))
         return
 
-    print(f"Scanning {len(session_files)} sessions against {len(injections)} injections…")
+    print(f"Scanning {len(session_files)} sessions (incl. subagents) against {len(injections)} injections…")
     session_index = _index_sessions(session_files)
 
     # Aggregate per memory id: {id: {snippet, injections, hits}}
     stats: dict[int, dict] = defaultdict(lambda: {"snippet": "", "keywords": set(), "injections": 0, "hits": 0})
+    unmatched = 0  # injections with no session in range (e.g. very recent or orphaned)
 
     for record in injections:
         inj_ts = record["_ts"]
@@ -138,6 +140,7 @@ def run(_args) -> None:
             None,
         )
         if session is None:
+            unmatched += len(record.get("memories", []))
             continue
 
         assistant_text = _get_assistant_text_after(session["file"], inj_ts)
@@ -206,3 +209,5 @@ def run(_args) -> None:
         )
     else:
         print(C.green("All memories show healthy hit rates."))
+    if unmatched:
+        print(C.dim(f"{unmatched} injection(s) had no matching session — likely very recent or from a session that ended before the next response."))
