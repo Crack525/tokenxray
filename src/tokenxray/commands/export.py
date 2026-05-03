@@ -7,8 +7,10 @@ def run(args):
     sessions = load_all_sessions(args.path, source_filter=getattr(args, "source", None))
     sessions.sort(key=lambda s: s["cost"]["total"], reverse=True)
 
-    print("session_id,source,project,turns,total_cost,cache_savings,input_tokens,"
-          "output_tokens,cache_read,cache_create,model,duration_min")
+    print(
+        "session_id,source,project,turns,total_cost,cache_savings,input_tokens,"
+        "output_tokens,cache_read,cache_create,model,duration_min"
+    )
 
     for s in sessions:
         dur = ""

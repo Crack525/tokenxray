@@ -19,7 +19,12 @@ def run_save(args):
     total_turns = sum(len(s["turns"]) for s in sessions)
 
     segment_stats = {}
-    for name, lo, hi in [("1-10", 1, 10), ("11-30", 11, 30), ("31-100", 31, 100), ("100+", 101, 99999)]:
+    for name, lo, hi in [
+        ("1-10", 1, 10),
+        ("11-30", 11, 30),
+        ("31-100", 31, 100),
+        ("100+", 101, 99999),
+    ]:
         seg = [s for s in sessions if lo <= len(s["turns"]) <= hi]
         segment_stats[name] = {
             "count": len(seg),
@@ -43,7 +48,9 @@ def run_save(args):
     print()
     print(f"{C.BOLD}{C.GREEN}Baseline saved!{C.RESET}")
     print(f"  File: {BASELINE_FILE}")
-    print(f"  Sessions: {len(sessions)}, Total: {fmt_cost(total_cost)}, Avg: {fmt_cost(baseline['avg_cost_per_session'])}")
+    print(
+        f"  Sessions: {len(sessions)}, Total: {fmt_cost(total_cost)}, Avg: {fmt_cost(baseline['avg_cost_per_session'])}"
+    )
     print(f"  {C.DIM}Compare later with: tokenxray --compare{C.RESET}")
     print()
 
@@ -77,10 +84,18 @@ def run_compare(args):
 
     print(f"  {'':>20} {'Baseline':>12} {'Current':>12} {'Delta':>15}")
     print(f"  {C.DIM}{'─' * 60}{C.RESET}")
-    print(f"  {'Sessions':>20} {bl['session_count']:>12} {cur_sessions:>12} {delta(cur_sessions - bl['session_count'], str)}")
-    print(f"  {'Total turns':>20} {bl['total_turns']:>12,} {cur_turns:>12,} {delta(cur_turns - bl['total_turns'], str)}")
-    print(f"  {'Total cost':>20} {fmt_cost(bl['total_cost']):>12} {fmt_cost(cur_cost):>12} {delta(cur_cost - bl['total_cost'])}")
-    print(f"  {'Avg cost/session':>20} {fmt_cost(bl['avg_cost_per_session']):>12} {fmt_cost(cur_avg):>12} {delta(cur_avg - bl['avg_cost_per_session'])}")
+    print(
+        f"  {'Sessions':>20} {bl['session_count']:>12} {cur_sessions:>12} {delta(cur_sessions - bl['session_count'], str)}"
+    )
+    print(
+        f"  {'Total turns':>20} {bl['total_turns']:>12,} {cur_turns:>12,} {delta(cur_turns - bl['total_turns'], str)}"
+    )
+    print(
+        f"  {'Total cost':>20} {fmt_cost(bl['total_cost']):>12} {fmt_cost(cur_cost):>12} {delta(cur_cost - bl['total_cost'])}"
+    )
+    print(
+        f"  {'Avg cost/session':>20} {fmt_cost(bl['avg_cost_per_session']):>12} {fmt_cost(cur_avg):>12} {delta(cur_avg - bl['avg_cost_per_session'])}"
+    )
 
     # Segment comparison
     print()
@@ -89,7 +104,9 @@ def run_compare(args):
         lo = {"1-10": 1, "11-30": 11, "31-100": 31, "100+": 101}[name]
         hi = {"1-10": 10, "11-30": 30, "31-100": 100, "100+": 99999}[name]
         cur_seg = [s for s in sessions if lo <= len(s["turns"]) <= hi]
-        cur_seg_avg = sum(s["cost"]["total"] for s in cur_seg) / len(cur_seg) if cur_seg else 0
+        cur_seg_avg = (
+            sum(s["cost"]["total"] for s in cur_seg) / len(cur_seg) if cur_seg else 0
+        )
         base_avg = bl.get("segments", {}).get(name, {}).get("avg_cost", 0)
         base_count = bl.get("segments", {}).get(name, {}).get("count", 0)
         print(

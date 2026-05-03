@@ -42,17 +42,32 @@ def _enumerate_server_tools(server_config, timeout=5):
     full_env.update(env_overrides or {})
 
     # MCP JSON-RPC: initialize then tools/list
-    init_req = json.dumps({
-        "jsonrpc": "2.0", "id": 0, "method": "initialize",
-        "params": {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {},
-            "clientInfo": {"name": "tokenxray", "version": "1.0"},
-        },
-    }) + "\n"
-    list_req = json.dumps({
-        "jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {},
-    }) + "\n"
+    init_req = (
+        json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 0,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "tokenxray", "version": "1.0"},
+                },
+            }
+        )
+        + "\n"
+    )
+    list_req = (
+        json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/list",
+                "params": {},
+            }
+        )
+        + "\n"
+    )
 
     proc = None
     try:
@@ -108,8 +123,10 @@ def run(args):
     avg_input_price = _avg_input_price(sessions)
 
     # Aggregate tool usage across all sessions
-    server_tool_calls = defaultdict(lambda: defaultdict(int))  # server -> tool -> total calls
-    server_session_count = defaultdict(int)                    # server -> session count
+    server_tool_calls = defaultdict(
+        lambda: defaultdict(int)
+    )  # server -> tool -> total calls
+    server_session_count = defaultdict(int)  # server -> session count
     sessions_with_any_mcp = 0
     first_mcp_time = None  # earliest session that ever called an MCP tool
 
@@ -137,12 +154,15 @@ def run(args):
     # dead-weight estimates with old sessions that predate any MCP usage).
     if first_mcp_time is not None:
         sessions = [
-            s for s in sessions
+            s
+            for s in sessions
             if s.get("start_time") is None or s["start_time"] >= first_mcp_time
         ]
 
     if not sessions:
-        print(f"{C.DIM}No sessions found after MCP first use. Nothing to audit.{C.RESET}")
+        print(
+            f"{C.DIM}No sessions found after MCP first use. Nothing to audit.{C.RESET}"
+        )
         return
 
     # Optionally enumerate available tools from live MCP servers
@@ -154,18 +174,34 @@ def run(args):
             if tools is not None:
                 server_available_tools[server_name] = tools
 
-    _display(sessions, mcp_servers, server_tool_calls, server_session_count,
-             sessions_with_any_mcp, server_available_tools, avg_input_price)
+    _display(
+        sessions,
+        mcp_servers,
+        server_tool_calls,
+        server_session_count,
+        sessions_with_any_mcp,
+        server_available_tools,
+        avg_input_price,
+    )
 
 
-def _display(sessions, mcp_servers, server_tool_calls, server_session_count,
-             sessions_with_any_mcp, server_available_tools, avg_input_price=3.0):
+def _display(
+    sessions,
+    mcp_servers,
+    server_tool_calls,
+    server_session_count,
+    sessions_with_any_mcp,
+    server_available_tools,
+    avg_input_price=3.0,
+):
     total = len(sessions)
     zero_mcp = total - sessions_with_any_mcp
     all_servers = sorted(set(list(mcp_servers.keys()) + list(server_tool_calls.keys())))
 
     print()
-    print(f"{C.BOLD}{C.CYAN}TokenXRay — MCP Tool Audit{C.RESET}  {C.DIM}(Claude Code sessions only){C.RESET}")
+    print(
+        f"{C.BOLD}{C.CYAN}TokenXRay — MCP Tool Audit{C.RESET}  {C.DIM}(Claude Code sessions only){C.RESET}"
+    )
     print(f"{C.DIM}{'─' * 70}{C.RESET}")
     print(
         f"  Configured servers: {C.BOLD}{len(mcp_servers)}{C.RESET}  |  "
@@ -196,7 +232,11 @@ def _display(sessions, mcp_servers, server_tool_calls, server_session_count,
         wasted_tokens = zero_mcp * tokens_per_session
         wasted_cost = (wasted_tokens / 1e6) * avg_input_price
 
-        note = "" if server_available_tools else f"  {C.DIM}(tool count from call history — run --enumerate-tools for exact count){C.RESET}"
+        note = (
+            ""
+            if server_available_tools
+            else f"  {C.DIM}(tool count from call history — run --enumerate-tools for exact count){C.RESET}"
+        )
         print(
             f"  {zero_mcp} of {total} sessions ({zero_mcp / total * 100:.0f}%) "
             f"loaded MCP schemas but called {C.BOLD}zero{C.RESET} MCP tools."
@@ -225,7 +265,11 @@ def _display(sessions, mcp_servers, server_tool_calls, server_session_count,
         n_avail = len(avail_tools) if avail_tools is not None else None
 
         sess_pct = sess_count / total * 100 if total > 0 else 0
-        config_tag = f"{C.GREEN}configured{C.RESET}" if in_config else f"{C.YELLOW}history only{C.RESET}"
+        config_tag = (
+            f"{C.GREEN}configured{C.RESET}"
+            if in_config
+            else f"{C.YELLOW}history only{C.RESET}"
+        )
 
         print()
         print(f"  {C.BOLD}SERVER: {server_name}{C.RESET}  [{config_tag}]")
@@ -242,13 +286,17 @@ def _display(sessions, mcp_servers, server_tool_calls, server_session_count,
         )
 
         if not tools_called:
-            print(f"  {C.RED}No calls recorded — this server may be pure dead weight.{C.RESET}")
+            print(
+                f"  {C.RED}No calls recorded — this server may be pure dead weight.{C.RESET}"
+            )
             continue
 
         # Tool call table
         print()
         max_calls = max(tools_called.values())
-        for tool, count in sorted(tools_called.items(), key=lambda x: x[1], reverse=True):
+        for tool, count in sorted(
+            tools_called.items(), key=lambda x: x[1], reverse=True
+        ):
             pct = count / total_calls * 100
             print(
                 f"    {tool:<45} {count:>5} calls  "
@@ -264,7 +312,7 @@ def _display(sessions, mcp_servers, server_tool_calls, server_session_count,
                 print(f"  {C.RED}Never called ({len(dead)} tools):{C.RESET}")
                 # Print in rows of 3
                 for i in range(0, len(dead), 3):
-                    row = dead[i:i + 3]
+                    row = dead[i : i + 3]
                     print(f"    {C.DIM}{',  '.join(row)}{C.RESET}")
 
     # ── Recommendations ───────────────────────────────────────────────────────
@@ -314,6 +362,8 @@ def _display(sessions, mcp_servers, server_tool_calls, server_session_count,
         recs_shown += 1
 
     if recs_shown == 0:
-        print(f"  {C.GREEN}MCP usage looks healthy — no major dead-weight found.{C.RESET}")
+        print(
+            f"  {C.GREEN}MCP usage looks healthy — no major dead-weight found.{C.RESET}"
+        )
 
     print()

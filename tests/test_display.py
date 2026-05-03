@@ -2,7 +2,14 @@
 
 from datetime import datetime, timezone
 
-from tokenxray.display import fmt_tokens, fmt_cost, bar, duration_str, display_project_name, display_models
+from tokenxray.display import (
+    fmt_tokens,
+    fmt_cost,
+    bar,
+    duration_str,
+    display_project_name,
+    display_models,
+)
 
 
 class TestFmtTokens:

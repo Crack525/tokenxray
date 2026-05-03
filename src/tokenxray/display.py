@@ -1,4 +1,5 @@
 """Formatting helpers for terminal display."""
+
 from __future__ import annotations
 
 
@@ -9,14 +10,14 @@ def display_project_name(project: str, max_len: int | None = None) -> str:
     if project.startswith("-"):
         parts = [part for part in project.split("-") if part]
         if "Documents" in parts:
-            parts = parts[parts.index("Documents") + 1:]
+            parts = parts[parts.index("Documents") + 1 :]
         elif parts[:1] == ["Users"] and len(parts) > 3:
             parts = parts[3:]
         if parts:
             display = "/".join(parts)
 
     if max_len is not None and len(display) > max_len:
-        display = "..." + display[-(max_len - 3):]
+        display = "..." + display[-(max_len - 3) :]
 
     return display
 
@@ -58,8 +59,13 @@ def fmt_cost(n: float) -> str:
     return f"${n:.3f}"
 
 
-def bar(value: float, max_value: float, width: int = 30,
-        char: str = "\u2588", empty: str = "\u2591") -> str:
+def bar(
+    value: float,
+    max_value: float,
+    width: int = 30,
+    char: str = "\u2588",
+    empty: str = "\u2591",
+) -> str:
     if max_value == 0:
         return empty * width
     filled = int(value / max_value * width)

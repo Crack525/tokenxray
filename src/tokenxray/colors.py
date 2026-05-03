@@ -16,6 +16,17 @@ class C:
 
     @staticmethod
     def disable():
-        for attr in ["BOLD", "DIM", "RED", "GREEN", "YELLOW", "BLUE",
-                      "MAGENTA", "CYAN", "WHITE", "BG_RED", "RESET"]:
+        for attr in [
+            "BOLD",
+            "DIM",
+            "RED",
+            "GREEN",
+            "YELLOW",
+            "BLUE",
+            "MAGENTA",
+            "CYAN",
+            "WHITE",
+            "BG_RED",
+            "RESET",
+        ]:
             setattr(C, attr, "")

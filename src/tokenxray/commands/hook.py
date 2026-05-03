@@ -5,7 +5,15 @@ import os
 
 from tokenxray import __version__ as _PKG_VERSION
 from tokenxray.colors import C
-from tokenxray.config import DATA_DIR, HOOK_SCRIPT, STATUSLINE_SCRIPT, SETTINGS_FILE, PRICING, DEFAULT_PRICING, PRICING_LAST_UPDATED
+from tokenxray.config import (
+    DATA_DIR,
+    HOOK_SCRIPT,
+    STATUSLINE_SCRIPT,
+    SETTINGS_FILE,
+    PRICING,
+    DEFAULT_PRICING,
+    PRICING_LAST_UPDATED,
+)
 
 RESUME_HOOK_SCRIPT = DATA_DIR / "resume_hook.py"
 SUBAGENT_HOOK_SCRIPT = DATA_DIR / "subagent_hook.py"
@@ -1074,13 +1082,18 @@ def _write_scripts():
         os.chmod(path, 0o755)
 
     import json as _json
+
     pricing_file = DATA_DIR / "pricing.json"
     with open(pricing_file, "w") as f:
-        _json.dump({
-            "pricing": PRICING,
-            "default": DEFAULT_PRICING,
-            "last_updated": PRICING_LAST_UPDATED,
-        }, f, indent=2)
+        _json.dump(
+            {
+                "pricing": PRICING,
+                "default": DEFAULT_PRICING,
+                "last_updated": PRICING_LAST_UPDATED,
+            },
+            f,
+            indent=2,
+        )
 
 
 def _load_settings():
@@ -1098,7 +1111,8 @@ def _is_installed(entries, script_path):
     """Check if a hook script is already registered."""
     return any(
         str(script_path) in str(h.get("hooks", []))
-        for h in entries if isinstance(h, dict)
+        for h in entries
+        if isinstance(h, dict)
     )
 
 
@@ -1132,7 +1146,9 @@ def run(args):
     all_installed = cost_ok and resume_ok and subagent_ok and statusline_ok
 
     if all_installed:
-        print(f"{C.GREEN}All hooks + status line already installed! Scripts updated at {DATA_DIR}{C.RESET}")
+        print(
+            f"{C.GREEN}All hooks + status line already installed! Scripts updated at {DATA_DIR}{C.RESET}"
+        )
         return
 
     print()
@@ -1161,7 +1177,9 @@ def run(args):
         if not resume_ok:
             resume_entry = {
                 "matcher": "",
-                "hooks": [{"type": "command", "command": f"python3 {RESUME_HOOK_SCRIPT}"}],
+                "hooks": [
+                    {"type": "command", "command": f"python3 {RESUME_HOOK_SCRIPT}"}
+                ],
             }
             if not isinstance(user_prompt, list):
                 user_prompt = []
@@ -1171,7 +1189,9 @@ def run(args):
         if not subagent_ok:
             subagent_entry = {
                 "matcher": "Agent",
-                "hooks": [{"type": "command", "command": f"python3 {SUBAGENT_HOOK_SCRIPT}"}],
+                "hooks": [
+                    {"type": "command", "command": f"python3 {SUBAGENT_HOOK_SCRIPT}"}
+                ],
             }
             if not isinstance(pre_tool, list):
                 pre_tool = []
@@ -1196,8 +1216,12 @@ def run(args):
             tmp.unlink(missing_ok=True)
             raise
 
-        print(f"  {C.GREEN}{C.BOLD}Hooks + status line installed! Restart Claude Code to activate.{C.RESET}")
+        print(
+            f"  {C.GREEN}{C.BOLD}Hooks + status line installed! Restart Claude Code to activate.{C.RESET}"
+        )
     else:
-        print(f"  Run: {C.BOLD}tokenxray --install-hook --confirm{C.RESET} to auto-install")
+        print(
+            f"  Run: {C.BOLD}tokenxray --install-hook --confirm{C.RESET} to auto-install"
+        )
 
     print()

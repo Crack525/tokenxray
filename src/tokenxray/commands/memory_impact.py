@@ -124,11 +124,15 @@ def run(_args) -> None:
         print(C.yellow("No Claude session files found."))
         return
 
-    print(f"Scanning {len(session_files)} sessions (incl. subagents) against {len(injections)} injections…")
+    print(
+        f"Scanning {len(session_files)} sessions (incl. subagents) against {len(injections)} injections…"
+    )
     session_index = _index_sessions(session_files)
 
     # Aggregate per memory id: {id: {snippet, injections, hits}}
-    stats: dict[int, dict] = defaultdict(lambda: {"snippet": "", "keywords": set(), "injections": 0, "hits": 0})
+    stats: dict[int, dict] = defaultdict(
+        lambda: {"snippet": "", "keywords": set(), "injections": 0, "hits": 0}
+    )
     unmatched = 0  # injections with no session in range (e.g. very recent or orphaned)
 
     for record in injections:
@@ -164,7 +168,9 @@ def run(_args) -> None:
 
     if not stats:
         print(C.yellow("No matched injections found in session files."))
-        print("Sessions may have ended before injection timestamps, or log is very recent.")
+        print(
+            "Sessions may have ended before injection timestamps, or log is very recent."
+        )
         return
 
     # Sort by hit rate ascending (pruning candidates first)
@@ -179,7 +185,9 @@ def run(_args) -> None:
     overall_rate = total_hits / total_injections if total_injections else 0
 
     print()
-    print(f"{C.bold('Memory Hit Rate')}  —  {total_hits}/{total_injections} injections used  ({overall_rate:.0%} overall)")
+    print(
+        f"{C.bold('Memory Hit Rate')}  —  {total_hits}/{total_injections} injections used  ({overall_rate:.0%} overall)"
+    )
     print()
 
     header = f"{'ID':>4}  {'Injections':>10}  {'Hits':>4}  {'Rate':>6}  Snippet"
@@ -198,7 +206,9 @@ def run(_args) -> None:
             rate_col = C.yellow(rate_str)
             flag = ""
         snippet = s["snippet"] or "(no snippet)"
-        print(f"{mid:>4}  {s['injections']:>10}  {s['hits']:>4}  {rate_col:>6}  {snippet}{flag}")
+        print(
+            f"{mid:>4}  {s['injections']:>10}  {s['hits']:>4}  {rate_col:>6}  {snippet}{flag}"
+        )
 
     print()
     low = sum(1 for _, _, r in rows if r < 0.2)
@@ -210,4 +220,8 @@ def run(_args) -> None:
     else:
         print(C.green("All memories show healthy hit rates."))
     if unmatched:
-        print(C.dim(f"{unmatched} injection(s) had no matching session — likely very recent or from a session that ended before the next response."))
+        print(
+            C.dim(
+                f"{unmatched} injection(s) had no matching session — likely very recent or from a session that ended before the next response."
+            )
+        )

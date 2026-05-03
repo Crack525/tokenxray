@@ -1,4 +1,5 @@
 """Tests for tokenxray --doctor (diagnosis-only, no writes)."""
+
 import json
 import os
 import subprocess
@@ -13,7 +14,9 @@ def _run_doctor(home: Path) -> subprocess.CompletedProcess:
     env = {**os.environ, "HOME": str(home), "PYTHONPATH": _SRC_DIR}
     return subprocess.run(
         [sys.executable, "-m", "tokenxray", "--doctor", "--no-color"],
-        capture_output=True, text=True, env=env,
+        capture_output=True,
+        text=True,
+        env=env,
     )
 
 
@@ -33,7 +36,9 @@ def _make_minimal_home(tmp_path: Path) -> dict:
     statusline = tokenxray_dir / "statusline.py"
     statusline.write_text("# statusline")
     pricing = tokenxray_dir / "pricing.json"
-    pricing.write_text(json.dumps({"pricing": {}, "default": {}, "last_updated": "2026-04-23"}))
+    pricing.write_text(
+        json.dumps({"pricing": {}, "default": {}, "last_updated": "2026-04-23"})
+    )
 
     settings = {
         "hooks": {
@@ -65,6 +70,7 @@ def _make_minimal_home(tmp_path: Path) -> dict:
 
 # ─── all-green ────────────────────────────────────────────────────────────────
 
+
 class TestDoctorHealthy:
     def test_exits_zero(self, tmp_path):
         _make_minimal_home(tmp_path)
@@ -94,7 +100,12 @@ class TestDoctorHealthy:
     def test_hook_scripts_shown(self, tmp_path):
         _make_minimal_home(tmp_path)
         r = _run_doctor(tmp_path)
-        for name in ("cost_hook.py", "resume_hook.py", "subagent_hook.py", "statusline.py"):
+        for name in (
+            "cost_hook.py",
+            "resume_hook.py",
+            "subagent_hook.py",
+            "statusline.py",
+        ):
             assert name in r.stdout
 
     def test_registrations_shown(self, tmp_path):
@@ -125,11 +136,17 @@ class TestDoctorHealthy:
 
 # ─── hooks missing ────────────────────────────────────────────────────────────
 
+
 class TestDoctorHooksMissing:
     def test_not_installed_verdict(self, tmp_path):
         _make_minimal_home(tmp_path)
         # Remove hook scripts
-        for name in ("cost_hook.py", "resume_hook.py", "subagent_hook.py", "statusline.py"):
+        for name in (
+            "cost_hook.py",
+            "resume_hook.py",
+            "subagent_hook.py",
+            "statusline.py",
+        ):
             (tmp_path / ".tokenxray" / name).unlink()
         r = _run_doctor(tmp_path)
         assert "not installed" in r.stdout or "install" in r.stdout.lower()
@@ -145,6 +162,7 @@ class TestDoctorHooksMissing:
 
 
 # ─── settings.json missing ────────────────────────────────────────────────────
+
 
 class TestDoctorSettingsMissing:
     def test_settings_missing_noted(self, tmp_path):
@@ -164,12 +182,15 @@ class TestDoctorSettingsMissing:
 
 # ─── stale / idle activity ────────────────────────────────────────────────────
 
+
 class TestDoctorIdleActivity:
     def test_idle_verdict_when_no_live_session(self, tmp_path):
         _make_minimal_home(tmp_path)
         (tmp_path / ".tokenxray" / "live_session.json").unlink()
         r = _run_doctor(tmp_path)
-        assert "idle" in r.stdout or "never fired" in r.stdout or "installed" in r.stdout
+        assert (
+            "idle" in r.stdout or "never fired" in r.stdout or "installed" in r.stdout
+        )
 
     def test_live_session_not_found_noted(self, tmp_path):
         _make_minimal_home(tmp_path)
@@ -179,6 +200,7 @@ class TestDoctorIdleActivity:
 
 
 # ─── pricing.json ─────────────────────────────────────────────────────────────
+
 
 class TestDoctorPricingJson:
     def test_pricing_last_updated_shown(self, tmp_path):

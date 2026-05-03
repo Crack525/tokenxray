@@ -8,11 +8,20 @@ from tokenxray.parser import load_all_sessions
 
 
 def run(args):
-    all_sessions = load_all_sessions(args.path, source_filter=getattr(args, "source", None))
-    projects = defaultdict(lambda: {
-        "sessions": 0, "turns": 0, "cost": 0, "cache_create_cost": 0,
-        "output_cost": 0, "cache_read_cost": 0, "input_cost": 0,
-    })
+    all_sessions = load_all_sessions(
+        args.path, source_filter=getattr(args, "source", None)
+    )
+    projects = defaultdict(
+        lambda: {
+            "sessions": 0,
+            "turns": 0,
+            "cost": 0,
+            "cache_create_cost": 0,
+            "output_cost": 0,
+            "cache_read_cost": 0,
+            "input_cost": 0,
+        }
+    )
 
     for s in all_sessions:
         cost = s["cost"]
@@ -42,13 +51,23 @@ def run(args):
     )
     print()
 
-    print(f"  {C.DIM}{'Project':>40} {'Sessions':>8} {'Turns':>7} {'Cost':>9} {'CC Cost':>9} {'CC%':>5} {'Share':>6}{C.RESET}")
+    print(
+        f"  {C.DIM}{'Project':>40} {'Sessions':>8} {'Turns':>7} {'Cost':>9} {'CC Cost':>9} {'CC%':>5} {'Share':>6}{C.RESET}"
+    )
     print(f"  {C.DIM}{'─' * 85}{C.RESET}")
 
-    for proj, data in sorted(projects.items(), key=lambda x: x[1]["cost"], reverse=True):
-        cc_pct = data["cache_create_cost"] / data["cost"] * 100 if data["cost"] > 0 else 0
+    for proj, data in sorted(
+        projects.items(), key=lambda x: x[1]["cost"], reverse=True
+    ):
+        cc_pct = (
+            data["cache_create_cost"] / data["cost"] * 100 if data["cost"] > 0 else 0
+        )
         share = data["cost"] / total_cost * 100 if total_cost > 0 else 0
-        cost_color = C.RED if data["cost"] > 100 else (C.YELLOW if data["cost"] > 10 else C.GREEN)
+        cost_color = (
+            C.RED
+            if data["cost"] > 100
+            else (C.YELLOW if data["cost"] > 10 else C.GREEN)
+        )
 
         display_name = display_project_name(proj, 40)
 
@@ -73,6 +92,8 @@ def run(args):
         ("Fresh input", total_input_cost, C.DIM),
     ]:
         pct = val / total_cost * 100 if total_cost > 0 else 0
-        print(f"    {color}{label:>35}: {fmt_cost(val):>9} ({pct:.0f}%) {bar(pct, 100, 20)}{C.RESET}")
+        print(
+            f"    {color}{label:>35}: {fmt_cost(val):>9} ({pct:.0f}%) {bar(pct, 100, 20)}{C.RESET}"
+        )
 
     print()

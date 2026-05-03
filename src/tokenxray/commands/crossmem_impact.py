@@ -1,4 +1,5 @@
 """crossmem impact analysis — compare token spend before/after crossmem installation."""
+
 from __future__ import annotations
 
 import json
@@ -42,7 +43,14 @@ def _detect_crossmem_install_date() -> datetime | None:
 
 def _session_stats(sessions: list) -> dict:
     if not sessions:
-        return {"count": 0, "avg_cost": 0, "avg_input": 0, "avg_turns": 0, "avg_cache_pct": 0, "total_cost": 0}
+        return {
+            "count": 0,
+            "avg_cost": 0,
+            "avg_input": 0,
+            "avg_turns": 0,
+            "avg_cache_pct": 0,
+            "total_cost": 0,
+        }
 
     costs = [s["cost"]["total"] for s in sessions]
     inputs = [s["total_input"] for s in sessions]
@@ -107,12 +115,16 @@ def run(args):
     print()
 
     if b["count"] == 0:
-        print(f"  {C.YELLOW}No sessions found before crossmem install date — nothing to compare.{C.RESET}")
+        print(
+            f"  {C.YELLOW}No sessions found before crossmem install date — nothing to compare.{C.RESET}"
+        )
         print(f"  {C.DIM}{a['count']} sessions recorded after install.{C.RESET}\n")
         return
 
     if a["count"] == 0:
-        print(f"  {C.YELLOW}No sessions found after crossmem install date — too early to measure.{C.RESET}")
+        print(
+            f"  {C.YELLOW}No sessions found after crossmem install date — too early to measure.{C.RESET}"
+        )
         print(f"  {C.DIM}{b['count']} sessions recorded before install.{C.RESET}\n")
         return
 
@@ -124,14 +136,30 @@ def run(args):
 
     rows = [
         ("Sessions", f"{b['count']}", f"{a['count']}", None),
-        ("Avg cost / session", fmt_cost(b["avg_cost"]), fmt_cost(a["avg_cost"]),
-         _delta_str(b["avg_cost"], a["avg_cost"])),
-        ("Avg input tokens", fmt_tokens(int(b["avg_input"])), fmt_tokens(int(a["avg_input"])),
-         _delta_str(b["avg_input"], a["avg_input"])),
-        ("Avg turns / session", f"{b['avg_turns']:.1f}", f"{a['avg_turns']:.1f}",
-         _delta_str(b["avg_turns"], a["avg_turns"])),
-        ("Avg cache hit %", f"{b['avg_cache_pct']:.1f}%", f"{a['avg_cache_pct']:.1f}%",
-         _delta_str(b["avg_cache_pct"], a["avg_cache_pct"], lower_is_better=False)),
+        (
+            "Avg cost / session",
+            fmt_cost(b["avg_cost"]),
+            fmt_cost(a["avg_cost"]),
+            _delta_str(b["avg_cost"], a["avg_cost"]),
+        ),
+        (
+            "Avg input tokens",
+            fmt_tokens(int(b["avg_input"])),
+            fmt_tokens(int(a["avg_input"])),
+            _delta_str(b["avg_input"], a["avg_input"]),
+        ),
+        (
+            "Avg turns / session",
+            f"{b['avg_turns']:.1f}",
+            f"{a['avg_turns']:.1f}",
+            _delta_str(b["avg_turns"], a["avg_turns"]),
+        ),
+        (
+            "Avg cache hit %",
+            f"{b['avg_cache_pct']:.1f}%",
+            f"{a['avg_cache_pct']:.1f}%",
+            _delta_str(b["avg_cache_pct"], a["avg_cache_pct"], lower_is_better=False),
+        ),
         ("Total cost", fmt_cost(b["total_cost"]), fmt_cost(a["total_cost"]), None),
     ]
 
@@ -151,8 +179,10 @@ def run(args):
             f"  {C.GREEN}{C.BOLD}crossmem is saving ~{fmt_cost(saved_per_session)}/session "
             f"({pct:.0f}% reduction){C.RESET}"
         )
-        print(f"  {C.GREEN}{bar_pct}{C.RESET}  {C.DIM}projected savings over {a['count']} sessions: "
-              f"{fmt_cost(projected)}{C.RESET}")
+        print(
+            f"  {C.GREEN}{bar_pct}{C.RESET}  {C.DIM}projected savings over {a['count']} sessions: "
+            f"{fmt_cost(projected)}{C.RESET}"
+        )
     elif b["avg_cost"] > 0 and a["avg_cost"] >= b["avg_cost"]:
         print(
             f"  {C.YELLOW}No cost reduction detected yet.{C.RESET}  "

@@ -7,7 +7,12 @@ from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 
-from tokenxray.config import CLAUDE_PROJECTS_DIR, GEMINI_SESSIONS_DIR, COPILOT_WORKSPACE_DIR, get_pricing
+from tokenxray.config import (
+    CLAUDE_PROJECTS_DIR,
+    GEMINI_SESSIONS_DIR,
+    COPILOT_WORKSPACE_DIR,
+    get_pricing,
+)
 
 
 def find_session_files(base_path=None, include_subagents=False):
@@ -104,13 +109,17 @@ def _parse_assistant_entry(entry, session):
         session["total_cache_read"] += cr
         session["total_cache_create"] += cc
 
-        session["turns"].append({
-            "num": len(session["turns"]) + 1,
-            "input": inp, "output": out,
-            "cache_read": cr, "cache_create": cc,
-            "total_sent": inp + cr + cc,
-            "model": model,
-        })
+        session["turns"].append(
+            {
+                "num": len(session["turns"]) + 1,
+                "input": inp,
+                "output": out,
+                "cache_read": cr,
+                "cache_create": cc,
+                "total_sent": inp + cr + cc,
+                "model": model,
+            }
+        )
 
     content = msg.get("content", [])
     if isinstance(content, list):
@@ -140,7 +149,9 @@ def _parse_user_entry(entry, session):
                 elif isinstance(result, list):
                     for rc in result:
                         if isinstance(rc, dict):
-                            session["tool_results_chars"] += len(str(rc.get("text", "")))
+                            session["tool_results_chars"] += len(
+                                str(rc.get("text", ""))
+                            )
             elif block.get("type") == "text":
                 text = block.get("text", "")
                 if 10 < len(text) < 5000:
@@ -189,7 +200,9 @@ def calc_cost(session):
             output_cost += (out / 1e6) * pricing["output"]
             cache_read_cost += (cr / 1e6) * pricing["cache_read"]
             cache_create_cost += (cc / 1e6) * pricing["cache_create"]
-            total_no_cache += ((inp + cr + cc) / 1e6) * pricing["input"] + (out / 1e6) * pricing["output"]
+            total_no_cache += ((inp + cr + cc) / 1e6) * pricing["input"] + (
+                out / 1e6
+            ) * pricing["output"]
 
         total = input_cost + output_cost + cache_read_cost + cache_create_cost
         pricing = get_pricing(_pick_model(session["models_used"]))
@@ -199,11 +212,18 @@ def calc_cost(session):
         input_cost = (session["total_input"] / 1e6) * pricing["input"]
         output_cost = (session["total_output"] / 1e6) * pricing["output"]
         cache_read_cost = (session["total_cache_read"] / 1e6) * pricing["cache_read"]
-        cache_create_cost = (session["total_cache_create"] / 1e6) * pricing["cache_create"]
+        cache_create_cost = (session["total_cache_create"] / 1e6) * pricing[
+            "cache_create"
+        ]
         total = input_cost + output_cost + cache_read_cost + cache_create_cost
         total_no_cache = (
-            (session["total_input"] + session["total_cache_read"] + session["total_cache_create"])
-            / 1e6 * pricing["input"]
+            (
+                session["total_input"]
+                + session["total_cache_read"]
+                + session["total_cache_create"]
+            )
+            / 1e6
+            * pricing["input"]
         ) + output_cost
 
     return {
@@ -297,15 +317,17 @@ def parse_gemini_session(filepath):
         session["total_cache_read"] += cached
         session["total_output"] += output + thoughts
 
-        session["turns"].append({
-            "num": len(session["turns"]) + 1,
-            "input": fresh_input,
-            "output": output + thoughts,
-            "cache_read": cached,
-            "cache_create": 0,
-            "total_sent": inp_total,
-            "model": model,
-        })
+        session["turns"].append(
+            {
+                "num": len(session["turns"]) + 1,
+                "input": fresh_input,
+                "output": output + thoughts,
+                "cache_read": cached,
+                "cache_create": 0,
+                "total_sent": inp_total,
+                "model": model,
+            }
+        )
 
         # Count tool calls
         for tc in msg.get("toolCalls", []):
@@ -323,9 +345,11 @@ def find_copilot_session_files():
     """Find all GitHub Copilot transcript JSONL files."""
     if not COPILOT_WORKSPACE_DIR.exists():
         return []
-    return sorted(glob.glob(
-        str(COPILOT_WORKSPACE_DIR / "*/GitHub.copilot-chat/transcripts/*.jsonl")
-    ))
+    return sorted(
+        glob.glob(
+            str(COPILOT_WORKSPACE_DIR / "*/GitHub.copilot-chat/transcripts/*.jsonl")
+        )
+    )
 
 
 def parse_copilot_session(filepath):
@@ -416,15 +440,19 @@ def parse_copilot_session(filepath):
                 session["total_input"] += est_input
                 session["total_output"] += est_output
 
-                session["turns"].append({
-                    "num": len(session["turns"]) + 1,
-                    "input": est_input,
-                    "output": est_output,
-                    "cache_read": 0,
-                    "cache_create": 0,
-                    "total_sent": est_input,
-                    "model": list(session["models_used"])[0] if session["models_used"] else "unknown",
-                })
+                session["turns"].append(
+                    {
+                        "num": len(session["turns"]) + 1,
+                        "input": est_input,
+                        "output": est_output,
+                        "cache_read": 0,
+                        "cache_create": 0,
+                        "total_sent": est_input,
+                        "model": list(session["models_used"])[0]
+                        if session["models_used"]
+                        else "unknown",
+                    }
+                )
 
             # Accumulate input for next turn (context grows)
             current_turn_input_chars += current_turn_output_chars
@@ -448,7 +476,10 @@ def load_all_sessions(base_path=None, include_gemini=True, source_filter=None):
                     s["cost"] = calc_cost(s)
                     sessions.append(s)
             except Exception as e:
-                print(f"  [tokenxray] skipped Claude session {Path(f).name}: {e}", file=sys.stderr)
+                print(
+                    f"  [tokenxray] skipped Claude session {Path(f).name}: {e}",
+                    file=sys.stderr,
+                )
                 continue
 
     # Gemini CLI sessions
@@ -460,7 +491,10 @@ def load_all_sessions(base_path=None, include_gemini=True, source_filter=None):
                     s["cost"] = calc_cost(s)
                     sessions.append(s)
             except Exception as e:
-                print(f"  [tokenxray] skipped Gemini session {Path(f).name}: {e}", file=sys.stderr)
+                print(
+                    f"  [tokenxray] skipped Gemini session {Path(f).name}: {e}",
+                    file=sys.stderr,
+                )
                 continue
 
     # GitHub Copilot sessions (estimated tokens — no billing data available)
@@ -472,7 +506,10 @@ def load_all_sessions(base_path=None, include_gemini=True, source_filter=None):
                     s["cost"] = calc_cost(s)
                     sessions.append(s)
             except Exception as e:
-                print(f"  [tokenxray] skipped Copilot session {Path(f).name}: {e}", file=sys.stderr)
+                print(
+                    f"  [tokenxray] skipped Copilot session {Path(f).name}: {e}",
+                    file=sys.stderr,
+                )
                 continue
 
     return sessions

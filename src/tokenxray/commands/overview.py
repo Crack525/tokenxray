@@ -19,7 +19,8 @@ def run(args):
 
     unknown_label = DEFAULT_PRICING["label"]
     unknown_count = sum(
-        1 for s in sessions
+        1
+        for s in sessions
         if get_model_label(_pick_model(s["models_used"])) == unknown_label
     )
 
@@ -28,7 +29,9 @@ def run(args):
     total_saved = sum(s["cost"]["cache_savings"] for s in sessions)
 
     print()
-    print(f"{C.BOLD}{C.CYAN}TokenXRay — Session Overview{C.RESET}  {C.DIM}pricing updated {PRICING_LAST_UPDATED} · anthropic + google{C.RESET}")
+    print(
+        f"{C.BOLD}{C.CYAN}TokenXRay — Session Overview{C.RESET}  {C.DIM}pricing updated {PRICING_LAST_UPDATED} · anthropic + google{C.RESET}"
+    )
     print(f"{C.DIM}{'─' * 70}{C.RESET}")
     print(
         f"  {C.BOLD}{len(sessions)}{C.RESET} sessions  "
@@ -74,7 +77,9 @@ def run(args):
 
     # Top sessions table
     print()
-    print(f"  {C.BOLD}Top {min(top_n, len(sessions))} Most Expensive Sessions:{C.RESET}")
+    print(
+        f"  {C.BOLD}Top {min(top_n, len(sessions))} Most Expensive Sessions:{C.RESET}"
+    )
     print(
         f"  {C.DIM}{'Session':>12}  {'Project':>25}  {'Turns':>6}  "
         f"{'Cost':>8}  {'Cache%':>6}  {'Model':>12}  {'Elapsed':>8}{C.RESET}"
@@ -87,8 +92,10 @@ def run(args):
 
         model_label = get_model_label(_pick_model(s["models_used"]))
 
-        cost_color = C.RED if s["cost"]["total"] > 50 else (
-            C.YELLOW if s["cost"]["total"] > 10 else C.GREEN
+        cost_color = (
+            C.RED
+            if s["cost"]["total"] > 50
+            else (C.YELLOW if s["cost"]["total"] > 10 else C.GREEN)
         )
 
         print(
@@ -110,9 +117,11 @@ def run(args):
 
     # Nudge first-time users to install hooks if not yet configured
     from tokenxray.config import SETTINGS_FILE
+
     hooks_installed = False
     try:
         import json as _json
+
         with open(SETTINGS_FILE) as _f:
             hooks_installed = bool(_json.load(_f).get("hooks"))
     except (FileNotFoundError, Exception):

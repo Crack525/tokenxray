@@ -1,4 +1,5 @@
 """Diagnose TokenXRay installation health — read-only, no writes."""
+
 from __future__ import annotations
 
 import json
@@ -97,13 +98,18 @@ def _check_settings() -> dict[str, tuple[bool, str]]:
         ("PreToolUse", SUBAGENT_HOOK_SCRIPT, "PreToolUse → subagent_hook.py"),
     ]:
         ok = _hook_registered(hook_type, script)
-        results[hook_type] = (ok, _ok(label) if ok else _warn(f"{label}  (not registered)"))
+        results[hook_type] = (
+            ok,
+            _ok(label) if ok else _warn(f"{label}  (not registered)"),
+        )
 
     sl_cmd = settings.get("statusLine", {}).get("command", "")
     sl_ok = str(STATUSLINE_SCRIPT) in sl_cmd
     results["statusLine"] = (
         sl_ok,
-        _ok("statusLine → statusline.py") if sl_ok else _warn("statusLine → statusline.py  (not registered)"),
+        _ok("statusLine → statusline.py")
+        if sl_ok
+        else _warn("statusLine → statusline.py  (not registered)"),
     )
     return results
 
@@ -199,7 +205,9 @@ def run(_args=None) -> None:
         activity_ok = False
 
     debug_enabled = DEBUG_LOG.exists() and DEBUG_LOG.stat().st_size > 0
-    print(f"  {'Debug log':<20} {'enabled (' + str(DEBUG_LOG) + ')' if debug_enabled else 'disabled'}")
+    print(
+        f"  {'Debug log':<20} {'enabled (' + str(DEBUG_LOG) + ')' if debug_enabled else 'disabled'}"
+    )
     print()
 
     # ── Data sources ──────────────────────────────────────────────────────
