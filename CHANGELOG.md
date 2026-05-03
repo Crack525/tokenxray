@@ -1,5 +1,44 @@
 # TokenXRay Changelog
 
+## v0.3.24 — 2026-05-03 · `tokenxray --memory-impact`
+
+New command: **memory hit rate analysis** — feedback loop to know which crossmem
+memories the LLM agent actually used vs. silently ignored.
+
+- Reads `~/.tokenxray/memory_injections.jsonl` (written by crossmem ≥ 1.5.0)
+- Correlates each injection event to the Claude session active at that timestamp
+- Checks lexical overlap between injected memory keywords/snippets and assistant
+  response text that follows
+- Reports per-memory: injection count, hit count, hit rate %
+- Sorted ascending by hit rate — low-rate memories flagged as pruning candidates
+  with a `← prune?` marker and a `crossmem forget <id>` suggestion
+
+Requires crossmem ≥ 1.5.0 installed with the `prompt-search` hook active.
+
+---
+
+## v0.3.23 — 2026-04-25 · blog + README reframe
+
+- Blog post: "I set a $10 ceiling on Claude Code. It actually stopped."
+- README reframed around hard-stop as the unique differentiator
+
+---
+
+## v0.3.22 — 2026-04-24 · Python 3.9 compatibility + CI
+
+- Fix f-string same-quote nesting for Python 3.9 compatibility in `doctor.py`
+- Add `from __future__ import annotations` for Python 3.9
+- Add GitHub Actions CI workflow — test matrix (3.9–3.13) + PyPI publish on tag
+
+---
+
+## v0.3.21 — 2026-04-24 · behavioral fingerprinting + CLAUDE.md generator
+
+- `tokenxray --rules` — generates personalized CLAUDE.md rules from session history
+- `tokenxray --rules-dry-run` — prints generated rules without writing
+
+---
+
 ## v0.3.20 — 2026-04-23 · doctor cost fix
 
 - Fix `tokenxray --doctor` showing `$0.0000` for live session cost. Hook writes

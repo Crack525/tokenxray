@@ -56,6 +56,11 @@ def main():
         action="store_true",
         help="Compare token spend before/after crossmem installation",
     )
+    parser.add_argument(
+        "--memory-impact",
+        action="store_true",
+        help="Show which injected crossmem memories were actually used (hit rate per memory)",
+    )
 
     args = parser.parse_args()
 
@@ -64,6 +69,9 @@ def main():
 
     if args.crossmem_impact:
         from tokenxray.commands.crossmem_impact import run
+        run(args)
+    elif args.memory_impact:
+        from tokenxray.commands.memory_impact import run
         run(args)
     elif args.rules or args.rules_dry_run:
         from tokenxray.commands.rules import run
