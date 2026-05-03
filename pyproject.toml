@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tokenxray"
-version = "0.3.26"
+version = "0.3.27"
 description = "Live cost alerts, hard-stop ceiling, and session analysis for Claude Code. The spending guard Claude Code doesn't ship with."
 readme = "README.md"
 license = "MIT"

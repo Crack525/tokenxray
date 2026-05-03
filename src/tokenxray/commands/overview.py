@@ -1,12 +1,14 @@
 """Default overview of all sessions."""
 
 from tokenxray.colors import C
-from tokenxray.display import fmt_cost, fmt_tokens, bar, duration_str, display_project_name
+from tokenxray.display import fmt_cost, bar, duration_str, display_project_name
 from tokenxray.config import get_model_label, DEFAULT_PRICING, PRICING_LAST_UPDATED
 from tokenxray.parser import load_all_sessions, _pick_model
 
 
 def run(args):
+    from tokenxray.commands.hook import check_hook_skew
+
     sessions = load_all_sessions(args.path, source_filter=getattr(args, "source", None))
     if not sessions:
         print(f"{C.RED}No sessions with usage data found.{C.RESET}")
@@ -38,6 +40,12 @@ def run(args):
         print(
             f"  {C.YELLOW}Note: {unknown_count} session(s) have an unrecognized model and were "
             f"priced using Sonnet defaults — costs may be approximate.{C.RESET}"
+        )
+    old_ver, new_ver = check_hook_skew()
+    if old_ver:
+        print(
+            f"  {C.YELLOW}Hook scripts are stale (v{old_ver} deployed, v{new_ver} installed). "
+            f"Run: tokenxray --install-hook --confirm{C.RESET}"
         )
     print()
 

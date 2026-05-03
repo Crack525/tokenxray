@@ -3,6 +3,7 @@
 import json
 import os
 
+from tokenxray import __version__ as _PKG_VERSION
 from tokenxray.colors import C
 from tokenxray.config import DATA_DIR, HOOK_SCRIPT, STATUSLINE_SCRIPT, SETTINGS_FILE, PRICING, DEFAULT_PRICING, PRICING_LAST_UPDATED
 
@@ -22,6 +23,7 @@ Runs as a PostToolUse hook. After each tool use:
 Model choice is yours — this hook gives you the data to decide.
 Use /model to switch anytime.
 """
+TOKENXRAY_HOOK_VERSION = "%%TOKENXRAY_VERSION%%"
 import json
 import sys
 import glob
@@ -1036,12 +1038,33 @@ if __name__ == "__main__":
 '''
 
 
+def _read_deployed_version() -> str | None:
+    """Return TOKENXRAY_HOOK_VERSION from the deployed cost hook, or None."""
+    try:
+        for line in HOOK_SCRIPT.read_text().splitlines():
+            if line.startswith("TOKENXRAY_HOOK_VERSION"):
+                return line.split('"')[1]
+    except Exception:
+        pass
+    return None
+
+
+def check_hook_skew() -> tuple[str | None, str | None]:
+    """Return (deployed_version, package_version) if skew detected, else (None, None)."""
+    deployed = _read_deployed_version()
+    if deployed and deployed != _PKG_VERSION:
+        return deployed, _PKG_VERSION
+    return None, None
+
+
 def _write_scripts():
     """Write all hook and statusline scripts to ~/.tokenxray/."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
+    versioned_hook = HOOK_CODE.replace("%%TOKENXRAY_VERSION%%", _PKG_VERSION)
+
     for path, code in [
-        (HOOK_SCRIPT, HOOK_CODE),
+        (HOOK_SCRIPT, versioned_hook),
         (RESUME_HOOK_SCRIPT, RESUME_HOOK_CODE),
         (SUBAGENT_HOOK_SCRIPT, SUBAGENT_HOOK_CODE),
         (STATUSLINE_SCRIPT, STATUSLINE_CODE),
@@ -1086,7 +1109,14 @@ def _statusline_installed(settings):
 
 
 def run(args):
+    old_ver = _read_deployed_version()
     _write_scripts()
+
+    if old_ver and old_ver != _PKG_VERSION:
+        print(
+            f"{C.YELLOW}Hook scripts updated: v{old_ver} → v{_PKG_VERSION} "
+            f"(were stale after package upgrade){C.RESET}"
+        )
 
     settings = _load_settings()
     hooks = settings.get("hooks", {})
@@ -1113,8 +1143,8 @@ def run(args):
     print(f"  Subagent hook: {SUBAGENT_HOOK_SCRIPT}")
     print(f"  Status line:   {STATUSLINE_SCRIPT}")
     print()
-    print(f"  Hooks track cost, auto-checkpoint, and warn on Agent calls.")
-    print(f"  Status line shows live session health at the bottom of Claude Code.")
+    print("  Hooks track cost, auto-checkpoint, and warn on Agent calls.")
+    print("  Status line shows live session health at the bottom of Claude Code.")
     print()
 
     if getattr(args, "confirm", False):

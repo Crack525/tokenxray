@@ -1,5 +1,22 @@
 # TokenXRay Changelog
 
+## v0.3.27 — 2026-05-03 · hook version skew detection
+
+- Embeds `TOKENXRAY_HOOK_VERSION` in deployed `cost_hook.py` at install time (baked from package version)
+- `--install-hook` detects stale scripts and prints upgrade notice: `v0.3.26 → v0.3.27`
+- Overview warns inline if deployed hook version lags installed package: `Run: tokenxray --install-hook --confirm`
+- Exported `check_hook_skew()` for programmatic use
+
+---
+
+## v0.3.26 — 2026-05-03 · trajectory alert + pre-hardstop checkpoint
+
+- Turn 40+ trajectory alert: fires when projected cost at current velocity exceeds `trajectory_warn_cost` (default $8)
+- Pre-hardstop checkpoint: silent auto-save at 80% of hard-stop ceiling; `pre_stop_saved` flag prevents duplicate writes
+- Checkpoint goal fix: uses first user message ≥50 chars to skip system/hook noise
+
+---
+
 ## v0.3.25 — 2026-05-03 · subagent injection coverage
 
 - `find_session_files()` gains `include_subagents=False` parameter — default unchanged for all existing callers
