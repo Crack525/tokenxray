@@ -1,5 +1,7 @@
 """Install Claude Code live cost tracking hook + auto-checkpoint + resume hook."""
 
+from __future__ import annotations
+
 import json
 import os
 
