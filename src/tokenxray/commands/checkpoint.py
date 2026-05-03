@@ -125,11 +125,15 @@ def format_checkpoint(checkpoint):
     lines.append(f"> Session: {sid} | Branch: {branch}")
     lines.append("")
 
-    # Original goal
+    # Original goal — pick first substantial user message (>50 chars); short
+    # one-liners like "proceed" or "read checkpoint.md.loaded" are not goals.
     user_msgs = checkpoint.get("user_messages", [])
+    goal_msg = next((m for m in user_msgs if len(m.strip()) > 50), None)
+    if goal_msg is None and user_msgs:
+        goal_msg = user_msgs[0]
     lines.append("## Original Goal")
-    if user_msgs:
-        lines.append(user_msgs[0])
+    if goal_msg:
+        lines.append(goal_msg)
     else:
         lines.append("*(no user messages captured)*")
     lines.append("")
