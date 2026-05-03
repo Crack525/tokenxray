@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tokenxray"
-version = "0.3.28"
+version = "0.4.0"
 description = "Live cost alerts, hard-stop ceiling, and session analysis for Claude Code. The spending guard Claude Code doesn't ship with."
 readme = "README.md"
 license = "MIT"
@@ -40,7 +40,7 @@ tokenxray = "tokenxray.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-tokenxray = ["assets/*"]
+tokenxray = ["assets/*", "_hook_scripts/*.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

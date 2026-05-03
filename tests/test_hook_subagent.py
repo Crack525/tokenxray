@@ -3,9 +3,11 @@
 import json
 import subprocess
 import sys
+from pathlib import Path
 
+import tokenxray
 
-from tokenxray.commands.hook import SUBAGENT_HOOK_CODE
+_SCRIPTS_DIR = Path(tokenxray.__file__).parent / "_hook_scripts"
 
 SESSION_ID = "test-subagent-00000000"
 
@@ -28,7 +30,7 @@ def _state(
 def _run_hook(tmp_path, payload, state=None, config=None):
     """Write hook to tmp, seed live_session.json, run hook, return CompletedProcess."""
     hook = tmp_path / "subagent_hook.py"
-    hook.write_text(SUBAGENT_HOOK_CODE)
+    hook.write_text((_SCRIPTS_DIR / "subagent_hook.py").read_text())
 
     tokenxray_dir = tmp_path / ".tokenxray"
     tokenxray_dir.mkdir(parents=True, exist_ok=True)

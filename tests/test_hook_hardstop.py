@@ -4,11 +4,14 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
+import tokenxray
 
-from tokenxray.commands.hook import HOOK_CODE
 from tokenxray.config import PRICING, DEFAULT_PRICING
+
+_SCRIPTS_DIR = Path(tokenxray.__file__).parent / "_hook_scripts"
 
 SESSION_ID = "test-hard-stop-00000000"
 
@@ -59,7 +62,7 @@ def fake_home(tmp_path):
 
     # Write the hook script itself
     hook_script = tmp_path / "cost_hook.py"
-    hook_script.write_text(HOOK_CODE)
+    hook_script.write_text((_SCRIPTS_DIR / "cost_hook.py").read_text())
 
     return {
         "home": tmp_path,

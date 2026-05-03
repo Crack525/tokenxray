@@ -1,5 +1,15 @@
 # TokenXRay Changelog
 
+## v0.4.0 — 2026-05-03 · hook scripts extracted to real files (P3 refactor)
+
+- Extracted all 4 embedded hook scripts from string constants in `hook.py` into real `.py` files under `src/tokenxray/_hook_scripts/` (`cost_hook.py`, `resume_hook.py`, `subagent_hook.py`, `statusline.py`)
+- `_write_scripts()` now reads from the package directory instead of triple-quoted strings; `%%TOKENXRAY_VERSION%%` substitution preserved for version-stamping deployed scripts
+- `hook.py` reduced from ~1300 lines to ~208 lines
+- All tests updated to read scripts from `_hook_scripts/` package dir instead of importing removed string constants
+- 130/130 tests passing
+
+---
+
 ## v0.3.28 — 2026-05-03 · per-project session history feed
 
 - Resume hook now appends each completed session to `~/.tokenxray/history.jsonl` (session_id, project, turns, cost, model, context_size)

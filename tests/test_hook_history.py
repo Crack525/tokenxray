@@ -4,10 +4,12 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
+import tokenxray
 import pytest
 
-from tokenxray.commands.hook import RESUME_HOOK_CODE
+_SCRIPTS_DIR = Path(tokenxray.__file__).parent / "_hook_scripts"
 
 
 @pytest.fixture()
@@ -15,8 +17,12 @@ def fake_home(tmp_path):
     tokenxray_dir = tmp_path / ".tokenxray"
     tokenxray_dir.mkdir()
     hook_script = tmp_path / "resume_hook.py"
-    hook_script.write_text(RESUME_HOOK_CODE)
-    return {"home": tmp_path, "hook_script": hook_script, "tokenxray_dir": tokenxray_dir}
+    hook_script.write_text((_SCRIPTS_DIR / "resume_hook.py").read_text())
+    return {
+        "home": tmp_path,
+        "hook_script": hook_script,
+        "tokenxray_dir": tokenxray_dir,
+    }
 
 
 def _run_hook(fake_home, cwd=None):
@@ -71,7 +77,7 @@ class TestArchiveSessionToHistory:
         _run_hook(fake_home, cwd=str(project_dir))
 
         history_file = fake_home["tokenxray_dir"] / "history.jsonl"
-        lines = [l for l in history_file.read_text().splitlines() if l.strip()]
+        lines = [ln for ln in history_file.read_text().splitlines() if ln.strip()]
         assert len(lines) == 1
 
 
