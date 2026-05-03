@@ -47,6 +47,8 @@ DEFAULT_CONFIG = {
     "opus_nudge": True,
     "opus_nudge_turn": 20,
     "opus_nudge_cost": 5.0,
+    "trajectory_warn_turn": 30,
+    "trajectory_warn_cost": 8.0,
 }
 
 def load_config():
@@ -335,6 +337,8 @@ def main():
     prev_alerts = []
     prev_split_warned = False
     prev_opus_nudge_shown = False
+    prev_trajectory_warned = False
+    prev_pre_stop_saved = False
     if COST_LOG.exists():
         try:
             with open(COST_LOG) as f:
@@ -344,6 +348,8 @@ def main():
                 prev_alerts = prev.get("alerts", [])
                 prev_split_warned = prev.get("split_warned", False)
                 prev_opus_nudge_shown = prev.get("opus_nudge_shown", False)
+                prev_trajectory_warned = prev.get("trajectory_warned", False)
+                prev_pre_stop_saved = prev.get("pre_stop_saved", False)
         except (json.JSONDecodeError, KeyError):
             pass
 
@@ -356,6 +362,8 @@ def main():
         "model": get_current_model(last_model),
         "split_warned": prev_split_warned,
         "opus_nudge_shown": prev_opus_nudge_shown,
+        "trajectory_warned": prev_trajectory_warned,
+        "pre_stop_saved": prev_pre_stop_saved,
     }
     COST_LOG.parent.mkdir(parents=True, exist_ok=True)
     with open(COST_LOG, "w") as f:
@@ -366,6 +374,34 @@ def main():
     ctx_str = f"{last_ctx/1000:.0f}K" if last_ctx < 1e6 else f"{last_ctx/1e6:.1f}M"
     cost_per_turn = total_cost / turn_count if turn_count > 0 else 0
     model_label = get_current_model(last_model)
+
+    # ─── Pre-hardstop: silent checkpoint at 80% of ceiling ──────────────
+    if cfg.get("hard_stop") and not tracker.get("pre_stop_saved"):
+        stop_turns = cfg.get("hard_stop_turns", 120)
+        stop_cost = cfg.get("hard_stop_cost", 50)
+        if turn_count >= stop_turns * 0.8 or total_cost >= stop_cost * 0.8:
+            try:
+                cp = extract_checkpoint(jsonl_files[0])
+                cp["turns"] = turn_count
+                cp["cost"] = total_cost
+                cp["model"] = model_label
+                cp["context_size"] = ctx_str
+                cp_path = Path(cp.get("cwd") or ".") / ".claude" / "checkpoint.md"
+                cp_path.parent.mkdir(parents=True, exist_ok=True)
+                cp_content = format_checkpoint(cp)
+                cp_path.write_text(cp_content)
+                global_cp = Path.home() / ".tokenxray" / "checkpoint.md"
+                try:
+                    global_cp.parent.mkdir(parents=True, exist_ok=True)
+                    global_cp.write_text(cp_content)
+                except OSError:
+                    pass
+            except Exception:
+                pass
+            tracker["pre_stop_saved"] = True
+            with open(COST_LOG, "w") as f:
+                json.dump(tracker, f)
+            write_debug(f"pre-hardstop checkpoint saved at turn {turn_count}", debug_enabled)
 
     # ─── Hard stop: block further tool use past ceiling (fires every call) ─
     if cfg.get("hard_stop"):
@@ -425,6 +461,23 @@ def main():
                 f"\\033[2m[TokenXRay] Disable: set opus_nudge=false in ~/.tokenxray/config.json\\033[0m",
                 file=sys.stdout,
             )
+
+    # ─── Trajectory projection: early warning before split threshold ─────
+    if not tracker.get("trajectory_warned") and turn_count >= cfg.get("trajectory_warn_turn", 30):
+        warn_cost = cfg.get("trajectory_warn_cost", 8.0)
+        horizon = cfg.get("hard_stop_turns", 120) if cfg.get("hard_stop") else 200
+        projected = cost_per_turn * horizon
+        if projected >= warn_cost:
+            tracker["trajectory_warned"] = True
+            with open(COST_LOG, "w") as f:
+                json.dump(tracker, f)
+            print(
+                f"\\n\\033[1m\\033[33m[TokenXRay] Trajectory alert: at ${cost_per_turn:.3f}/turn, "
+                f"this session projects to ${projected:.1f} over {horizon} turns. "
+                f"Scope remaining work or split now.\\033[0m",
+                file=sys.stdout,
+            )
+            write_debug(f"trajectory alert fired at turn {turn_count}, projected ${projected:.1f}", debug_enabled)
 
     # ─── Split session warning + auto-checkpoint ────────────────────────
     if not tracker.get("split_warned") and (turn_count > cfg["split_turns"] or total_cost >= cfg["split_cost"]):
