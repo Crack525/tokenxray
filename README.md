@@ -110,6 +110,7 @@ Hints are prioritized — only the highest-priority action shows:
 | P3 | Context > 60% | `⚠ ctx X% — new session soon · saves ~60% tokens` |
 | P4 | Opus + cost > $3 | `→ /model sonnet — same task, 5x cheaper` |
 | P5 | 80+ turns + cost > $2 | `→ run: tokenxray --checkpoint · new session · say: read checkpoint.md.loaded` |
+| P6 | 30+ turns, >$0.10/turn | `Trajectory alert — at this rate, session will hit $X` |
 
 Disable hints (keep metrics): set `"statusline_hints": false` in `~/.tokenxray/config.json`.
 
@@ -117,8 +118,8 @@ Disable hints (keep metrics): set `"statusline_hints": false` in `~/.tokenxray/c
 
 After `--install-hook`, every Claude Code session gets three hooks that run silently in the background:
 
-1. **Cost hook** — tracks your running cost after every tool use. Shows a status line every 10 turns. Alerts when you cross $1/$3/$5/$10/$25/$50. At 60 turns or $5, auto-saves your session state to `.claude/checkpoint.md`. If you're on Opus, nudges you once to consider switching to Sonnet (5x cheaper for most tasks).
-2. **Resume hook** — when you start a new session, detects the checkpoint and prints last session stats + the checkpoint path. **Claude does not read the checkpoint automatically** — tell it to: *"read .claude/checkpoint.md.loaded"*. One-shot: fires once per session, then gets out of the way.
+1. **Cost hook** — tracks your running cost after every tool use. Shows a status line every 10 turns. Alerts when you cross $1/$3/$5/$10/$25/$50. At 60 turns or $5, auto-saves your session state to `.claude/checkpoint.md`. If you're on Opus, nudges you once to consider switching to Sonnet (5x cheaper for most tasks). At 30+ turns with high cost velocity (>$0.10/turn), fires a trajectory alert: *"At this rate, session will hit $X — consider a split soon."*
+2. **Resume hook** — when you start a new session, shows the last 3 sessions for the current project (date, turns, cost, model) from `~/.tokenxray/history.jsonl`, detects any pending checkpoint, and prints where to pick up. **Claude does not read the checkpoint automatically** — tell it to: *"read .claude/checkpoint.md.loaded"*. One-shot: fires once per session, then gets out of the way.
 3. **Subagent hook** — fires before each `Agent` tool call. Full warning on first call per session, brief reminder every 5 calls. Agents spawn new context windows at full cost — this nudges you to consider whether delegation is worth it.
 
 Your daily workflow:
@@ -155,10 +156,13 @@ Run these when you want to understand your spending patterns and change habits:
 ```bash
 tokenxray                  # Overview — where your money goes
 tokenxray --diagnose       # Specific recommendations
+tokenxray --doctor         # Health check — binary, hooks, DB, pricing freshness
 tokenxray --session <id>   # Deep dive into one session
 tokenxray --dashboard      # Interactive HTML charts
 tokenxray --projects       # Cost by project
 tokenxray --mcp            # MCP tool audit — find dead-weight servers
+tokenxray --memory-impact  # crossmem hit-rate — which saved memories did the agent actually use?
+tokenxray --rules          # Generate a CLAUDE.md from your behavioral patterns
 ```
 
 ```
@@ -241,8 +245,14 @@ tokenxray --source all       # Everything (default)
 | `--baseline` / `--compare` | Save baseline, compare after changing habits |
 | `--export csv` | Export sessions to CSV |
 | `--checkpoint` | Manually extract session state |
+| `--doctor` | Health check — hook install, DB, binary, pricing freshness |
 | `--mcp` | MCP tool audit — dead-weight servers, unused tools, schema cost estimate |
 | `--mcp --enumerate-tools` | Spawn each configured MCP server and get exact tool counts |
+| `--memory-impact` | crossmem hit-rate analysis — which injected memories the agent actually cited |
+| `--rules` | Behavioral fingerprinting — generate a `CLAUDE.md` from your session patterns |
+| `--rules-dry-run` | Preview generated CLAUDE.md without writing it |
+| `--crossmem-impact` | Estimate token savings attributable to crossmem context injection |
+| `--install-hook --confirm` | (Re-)install hooks; detects stale versions and prompts upgrade |
 
 ## MCP Tool Audit
 
