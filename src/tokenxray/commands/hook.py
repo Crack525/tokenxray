@@ -45,7 +45,7 @@ def _write_scripts():
     """Write all hook and statusline scripts to ~/.tokenxray/."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    _scripts = Path(__file__).parent / "_hook_scripts"
+    _scripts = Path(__file__).parent.parent / "_hook_scripts"
     versioned_hook = (
         (_scripts / "cost_hook.py")
         .read_text()
