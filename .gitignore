@@ -18,4 +18,6 @@ qa-results/
 .claude/checkpoint.md
 .claude/checkpoint.md.loaded
 .claude/settings.local.json
-demo/home/blog/hn-posts-draft.md
+demo/home/
+blog/hn-posts-draft.md
+proof.html
